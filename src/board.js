@@ -363,7 +363,11 @@ var Board = (function () {
         var pad = Models.ROVI_TOP * Voxel.COS_P;
         var w = bounds.x1 - bounds.x0;
         var h = (bounds.y1 - bounds.y0) + pad;
-        var s = Math.min(space.width / w, space.height / h) * 0.96;
+        // Tighter vertically than horizontally: the head-room reserved above is only
+        // used when the robot is on the farthest square, so centring the padded box
+        // leaves the island sitting low. Without the extra margin its bottom corner
+        // ends up a few pixels from the edge of the sky and looks clipped.
+        var s = Math.min(space.width / w * 0.96, space.height / h * 0.9);
         // A cell between these two reads: smaller and the robot's face is lost, larger
         // and a three by three level fills a whole classroom projector with grass.
         s = clamp(s, 34 / TILE, 126 / TILE);

@@ -47,13 +47,21 @@ var Models = (function () {
      units of screen height, and a box of height h reaches h·cos(pitch) up the screen —
      so anything much over 22 units draws itself into the square behind it. The first
      flagpole was 30 and ran straight through the robot standing a row further back. */
+  /* The pad under the flag is blue and flat, and it used to be a block of soil. On any
+     level whose goal sits on an edge square — which is most of them — that block of soil
+     landed right beside the island's own soil rim, and the two browns read as one broken
+     step in the edge rather than as a flag standing on something. Blue cannot be
+     mistaken for the ground it stands on, and it belongs to the flag above it. */
   function flag() {
     return [
-      box(-8, 8, GROUND, GROUND + 3, -8, 8, 'soil'),
+      box(-10, 10, GROUND, GROUND + 1.5, -10, 10, 'deep'),
       box(-1.5, 1.5, GROUND, GROUND + TALL, -1.5, 1.5, 'dark'),
       box(1.5, 15, GROUND + 15, GROUND + TALL, -2, 2, 'glow'),
       box(1.5, 11, GROUND + 10, GROUND + 15, -2, 2, 'glow'),
-      box(1.5, 7, GROUND + 5, GROUND + 10, -2, 2, 'deep')
+      // All three steps in the one cyan. The lowest used to be the darker blue for a bit
+      // of shading, and once the pad below it became that same blue the step sank into
+      // it and read as a fin growing out of the ground.
+      box(1.5, 7, GROUND + 5, GROUND + 10, -2, 2, 'glow')
     ];
   }
 

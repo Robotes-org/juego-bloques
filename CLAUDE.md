@@ -230,6 +230,12 @@ Things that are easy to get wrong:
 - **Wall blocks are a unit narrower than their square.** Flush against each other they
   merge into one grey slab and a child can no longer count how many squares a wall takes
   up. The thin line of grass between them is what makes them countable.
+- **Nothing that stands on the ground may be soil-coloured.** The flag used to stand on a
+  block of soil, and on any level whose goal sits on an edge square — which is most of
+  them — that block landed right beside the island's own soil rim. The two browns read as
+  one broken step in the edge rather than as a flag standing on something. Its pad is
+  blue now, which cannot be mistaken for the ground it stands on. The same trap is waiting
+  for anything painted `stone`, which is what the walls are.
 - **The ground is grass on top and soil down the sides.** Only the sides at the very edge
   of the board are ever seen, which is exactly where a world made of blocks should look
   like it was cut out of the earth. The checker is in lightness and not in hue — two
