@@ -38,6 +38,9 @@ notebook del taller.
 - **Mover o sacar un bloque:** arrástralo. Si lo sueltas fuera del programa, se borra.
 - **Repetir:** los bloques que van adentro del *repetir* se ejecutan varias veces. Con
   los botones **−** y **+** se cambia cuántas.
+- **La bandera:** cuando el robot la toca, la bandera se deshace en un montón de cubos
+  que salen volando. Vale la pena dejar que los niños lo vean antes de apretar
+  "Siguiente".
 - **▶ Ejecutar:** el robot sigue el programa completo. El bloque que está corriendo se
   ilumina, para que el niño vea qué instrucción se está ejecutando.
 - **Paso:** ejecuta **un solo bloque** y espera. Sirve para encontrar el error cuando el

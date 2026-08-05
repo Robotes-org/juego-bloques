@@ -24,6 +24,13 @@ var Board = (function () {
   var MOVE_MIN = 90, MOVE_MAX = 300;
   var BUMP_MS = 380, HOP_MS = 520, TAKE_MS = 300;
 
+  /* Reaching the flag breaks it into a burst of cubes. The numbers are in units and
+     seconds — one square is 26 units — and gravity is what makes the shower read as
+     something falling rather than as a firework. The whole thing is over in under a
+     second because the win dialog is on its way: the runner waits one move's delay
+     before it opens, and after that the board is behind a scrim. */
+  var FLAG_MS = 220, SPARKS = 24, GRAVITY = 220;
+
   /* Turns the ASCII rows of a level into something the game can query. */
   function parse(level) {
     var rows = level.map;
@@ -93,7 +100,7 @@ var Board = (function () {
       return (a.gx + a.gy) - (b.gx + b.gy) || a.gx - b.gx;
     }).forEach(function (t, i) { t.turn = i; });
 
-    var goalItem = { model: Models.flag(false), x: wx(g.goal.x), z: wz(g.goal.y), y: 0 };
+    var goalItem = { model: Models.flag(), x: wx(g.goal.x), z: wz(g.goal.y), y: 0 };
 
     var batteryItems = g.batteries.map(function (b) {
       return { model: Models.battery(), x: wx(b.x), z: wz(b.y), y: 0, gx: b.x, gy: b.y, takenAt: 0 };
@@ -103,7 +110,8 @@ var Board = (function () {
     var robotItem = { model: Models.ROVI, x: 0, z: 0, y: Models.GROUND, yaw: 0 };
 
     var props = [goalItem].concat(batteryItems);
-    var everything = ground.concat(props, [shadowItem, robotItem]);
+    var world = ground.concat(props, [shadowItem, robotItem]);
+    var sparks = [];      /* what is left of the flag, while it is still in the air */
 
     /* ---------- state ---------- */
 
@@ -116,9 +124,36 @@ var Board = (function () {
     var moveAt = 0, moveMs = MOVE_MAX;
     var spin = ORDER.indexOf(level.dir) * 90;
     var yawFrom = spin, yawTo = spin, turnAt = 0, turnMs = MOVE_MAX;
-    var bumpAt = 0, hopAt = 0;
+    var bumpAt = 0, hopAt = 0, goalAt = 0;
     var lastOrder = 0;
     var raf = 0;
+
+    /* The flag comes apart into cubes thrown out and up from where it stood. Each one is
+       given a velocity once and then placed by arithmetic on its own age, so the shower
+       does not drift if a frame is late and needs no timestep passed around. */
+    function shatter() {
+      var now = performance.now();
+      sparks = [];
+      for (var i = 0; i < SPARKS; i++) {
+        var a = Math.random() * Math.PI * 2;
+        var out = 35 + Math.random() * 60;
+        sparks.push({
+          model: Models.spark(1.6 + Math.random() * 2.2),
+          x0: goalItem.x + Math.cos(a) * 4,
+          z0: goalItem.z + Math.sin(a) * 4,
+          y0: Models.GROUND + 6 + Math.random() * 16,
+          vx: Math.cos(a) * out, vz: Math.sin(a) * out,
+          vy: 95 + Math.random() * 70,
+          spin: (Math.random() - 0.5) * 260,
+          born: now,
+          life: 780 + Math.random() * 320,
+          /* Cyan is what the flag was, amber is what a reward is everywhere else on the
+             page. Both, so the burst belongs to the flag and to the winning at once. */
+          tint: Math.random() < 0.55 ? 'glow' : 'gold',
+          x: 0, z: 0, y: 0, yaw: 0, alpha: 1
+        });
+      }
+    }
 
     /* Each order the runner gives is timed against the one before it, which is how the
        board follows the speed toggle without being told about it. */
@@ -154,10 +189,33 @@ var Board = (function () {
         dropLift = 34 * (1 - ease(d));
         dropAlpha = d <= 0 ? 0 : Math.min(1, d * 2);
       }
-      props.forEach(function (p) {
-        p.lift = dropLift;
-        p.alpha = p.takenAt ? p.alpha : dropAlpha;
-      });
+      props.forEach(function (p) { p.lift = dropLift; p.alpha = dropAlpha; });
+
+      /* The flag does not turn a colour when it is reached any more: it lifts off and is
+         gone inside a fifth of a second, and what stays is the burst. */
+      if (goalAt) {
+        var gk = reduced ? 1 : (now - goalAt) / FLAG_MS;
+        if (gk >= 1) goalItem.alpha = 0;
+        else { busy = true; goalItem.alpha = 1 - gk; goalItem.lift = dropLift + 14 * gk; }
+      }
+
+      if (sparks.length) {
+        busy = true;
+        sparks = sparks.filter(function (s) {
+          var t = (now - s.born) / 1000;
+          if (t * 1000 >= s.life) return false;
+          var y = s.y0 + s.vy * t - 0.5 * GRAVITY * t * t;
+          s.x = s.x0 + s.vx * t;
+          s.z = s.z0 + s.vz * t;
+          // Cubes that have come down stay on the grass and fade there, rather than
+          // falling through the world and out the bottom of it.
+          s.y = Math.max(Models.GROUND + 1.6, y);
+          s.yaw = s.spin * t;
+          var k = (t * 1000) / s.life;
+          s.alpha = k < 0.6 ? 1 : 1 - (k - 0.6) / 0.4;
+          return true;
+        });
+      }
 
       /* A collected battery lifts off its square and fades, which reads as taken rather
          than as a drawing that disappeared. */
@@ -219,7 +277,7 @@ var Board = (function () {
       shadowItem.z = pz;
       shadowItem.alpha = dropAlpha * (0.22 - hop * 0.012);
 
-      scene.draw(everything);
+      scene.draw(sparks.length ? world.concat(sparks) : world);
       raf = busy ? window.requestAnimationFrame(frame) : 0;
     }
 
@@ -273,18 +331,21 @@ var Board = (function () {
       },
 
       celebrate: function () {
-        goalItem.model = Models.flag(true);
-        hopAt = performance.now();
+        goalAt = performance.now();
+        hopAt = goalAt;
+        if (!reduced) shatter();
         kick();
       },
 
       reset: function () {
         spin = ORDER.indexOf(level.dir) * 90;
         yawFrom = yawTo = spin;
-        turnAt = moveAt = bumpAt = hopAt = lastOrder = 0;
+        turnAt = moveAt = bumpAt = hopAt = goalAt = lastOrder = 0;
         pos.x = from.x = g.start.x;
         pos.y = from.y = g.start.y;
-        goalItem.model = Models.flag(false);
+        sparks = [];
+        goalItem.alpha = 1;
+        goalItem.lift = 0;
         batteryItems.forEach(function (b) { b.takenAt = 0; b.alpha = 1; b.lift = 0; });
         kick();
       },

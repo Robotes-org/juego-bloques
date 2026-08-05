@@ -269,8 +269,14 @@
     }
 
     el.next.hidden = last;
-    el.overlay.hidden = false;
-    (last ? el.again : el.next).focus();
+
+    /* A beat before the dialog, so the child sees the flag come apart on the board
+       instead of reading about it over a scrim. Long enough for the burst to be up in
+       the air, short enough that nobody wonders whether they won. */
+    window.setTimeout(function () {
+      el.overlay.hidden = false;
+      (last ? el.again : el.next).focus();
+    }, 620);
   }
 
   function closeDialog() {

@@ -265,6 +265,14 @@ Things that are easy to get wrong:
   turn. CSS cannot reach inside a canvas, so nothing about the board appears in the media
   query in `styles.css`.
 - The animation loop runs only while something is moving and stops itself afterwards.
+- **Reaching the flag breaks it into cubes.** The flag lifts off and is gone in a fifth
+  of a second, and two dozen small boxes are thrown out and up from where it stood — cyan
+  because that is what the flag was, amber because that is what a reward is everywhere
+  else on the page. Each one is given a velocity once and then placed by arithmetic on
+  its own age, so the shower cannot drift when a frame is late and no timestep has to be
+  passed around. They rest on the grass rather than falling through the world.
+  **The win dialog waits 620 ms for it** (`win()` in `game.js`). Without that pause the
+  burst plays behind the scrim and the child reads about winning instead of seeing it.
 
 
 ## Design decisions worth keeping

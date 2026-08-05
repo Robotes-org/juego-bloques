@@ -47,16 +47,21 @@ var Models = (function () {
      units of screen height, and a box of height h reaches h·cos(pitch) up the screen —
      so anything much over 22 units draws itself into the square behind it. The first
      flagpole was 30 and ran straight through the robot standing a row further back. */
-  function flag(reached) {
-    var cloth = reached ? 'gold' : 'glow';
-    var shade = reached ? 'soil' : 'deep';
+  function flag() {
     return [
       box(-8, 8, GROUND, GROUND + 3, -8, 8, 'soil'),
       box(-1.5, 1.5, GROUND, GROUND + TALL, -1.5, 1.5, 'dark'),
-      box(1.5, 15, GROUND + 15, GROUND + TALL, -2, 2, cloth),
-      box(1.5, 11, GROUND + 10, GROUND + 15, -2, 2, cloth),
-      box(1.5, 7, GROUND + 5, GROUND + 10, -2, 2, shade)
+      box(1.5, 15, GROUND + 15, GROUND + TALL, -2, 2, 'glow'),
+      box(1.5, 11, GROUND + 10, GROUND + 15, -2, 2, 'glow'),
+      box(1.5, 7, GROUND + 5, GROUND + 10, -2, 2, 'deep')
     ];
+  }
+
+  /* One cube, for the burst the flag leaves behind when the robot reaches it. The colour
+     comes from the item rather than from here, so the same shape serves the cyan of the
+     flag and the amber that means reward everywhere else on the page. */
+  function spark(size) {
+    return [box(-size, size, -size, size, -size, size, 'glow')];
   }
 
   /* A cell standing on end: amber body, dark cap, dark band round the foot. The bolt
@@ -121,5 +126,5 @@ var Models = (function () {
   var ROVI_TOP = 26.5;
 
   return { TILE: TILE, GROUND: GROUND, WALL: WALL, ROVI: ROVI, ROVI_TOP: ROVI_TOP,
-    tile: tile, wall: wall, flag: flag, battery: battery, shadow: shadow };
+    tile: tile, wall: wall, flag: flag, battery: battery, shadow: shadow, spark: spark };
 })();
