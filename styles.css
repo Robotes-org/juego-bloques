@@ -122,6 +122,15 @@
   --game-spark: var(--rovi-sol);
   --game-go: var(--rovi-pasto);
 
+  /* Opening a level builds its world: one tile at a time, then everything on top drops
+     in together. `--tile-step` is how long a tile waits for its turn and `--tile-rise`
+     how long it then takes to land, so the build lasts one step per tile plus one rise.
+     At these two the biggest level, seven by seven, is finished inside 1.3 seconds —
+     the intro plays on every level a child opens, and it cannot be something they learn
+     to sit through. */
+  --tile-step: 12ms;
+  --tile-rise: .26s;
+
   --game-topbar: 3.5rem;
   --game-shadow: 0 2px 0 rgba(0, 0, 0, .22), 0 10px 24px rgba(0, 0, 0, .28);
 
@@ -736,7 +745,11 @@ h2, h3 {
   padding: 0;
   border: 3px solid var(--rovi-tinta);
   border-radius: 4px;
-  background: var(--game-floor);
+  /* Not the grass colour, on purpose. The tiles cover this completely once they have
+     landed, so it is only ever seen while the level is building itself — and against
+     green the tiles rise into a green square and the sweep is invisible. A shadow is
+     what a plot of ground with nothing on it should look like. */
+  background: rgba(0, 0, 0, .18);
   box-shadow: 0 6px 0 rgba(0, 0, 0, .3), 0 14px 26px rgba(0, 0, 0, .35);
 }
 
@@ -757,6 +770,18 @@ h2, h3 {
     inset 0 3px 0 rgba(255, 255, 255, .16),
     inset 0 -3px 0 rgba(0, 0, 0, .14),
     inset 0 0 0 1px rgba(0, 0, 0, .07);
+  /* `backwards` is what keeps a tile invisible until its turn comes: without it every
+     tile is drawn in place first and the sweep only starts afterwards. */
+  animation: tile-rise var(--tile-rise) ease-out backwards;
+  animation-delay: calc(var(--i, 0) * var(--tile-step));
+}
+
+/* Rising and not falling: the ground comes up out of the sky it is floating in. The
+   travel is short because `.floor` clips at its own edge, and a tile that starts far
+   below its square would be cut in half on the way up. */
+@keyframes tile-rise {
+  from { transform: translateY(12px) scale(.92); opacity: 0; }
+  to { transform: none; opacity: 1; }
 }
 
 .cell-alt { background: var(--rovi-pasto-claro); }
@@ -795,6 +820,26 @@ h2, h3 {
 .goal svg { padding: 6%; }
 .battery svg { padding: 14%; }
 
+/* Once the last tile has landed, everything standing on the world drops onto it — all
+   of it together, so a level reads first as ground and then as a puzzle laid out on it.
+   The delay is the whole build — a step for every tile plus the last one's rise — and
+   then a beat. Leaving the rise out of that sum is the obvious mistake: the batteries
+   start falling while the bottom row is still on its way up.
+
+   The animation goes on the sprite's child and never on the sprite itself: the sprite's
+   own transform is what places it on the grid, and animating that would send every
+   battery falling from the top left corner of the board. */
+.sprite > * {
+  animation: sprite-drop .36s cubic-bezier(.25, .9, .35, 1.15) backwards;
+  animation-delay: calc(var(--tiles, 30) * var(--tile-step) + var(--tile-rise) + 40ms);
+}
+
+@keyframes sprite-drop {
+  from { transform: translateY(-55%); opacity: 0; }
+  60% { opacity: 1; }
+  to { transform: none; opacity: 1; }
+}
+
 .robot { z-index: 3; transition: transform .3s ease-in-out; }
 
 .robot-inner {
@@ -803,6 +848,17 @@ h2, h3 {
   transform: rotate(var(--spin, 0deg));
   transition: transform .3s ease-in-out;
   filter: drop-shadow(0 2px 1px rgba(0, 0, 0, .35));
+  animation-name: robot-drop;
+}
+
+/* The robot falls with the others but has to keep the heading it starts the level with,
+   so it needs its own keyframes. The translate is written before the rotate on purpose:
+   that way it falls straight down the screen instead of down the robot's own rotated
+   frame, which is what -Y means everywhere else in this file. */
+@keyframes robot-drop {
+  from { transform: translateY(-55%) rotate(var(--spin, 0deg)); opacity: 0; }
+  60% { opacity: 1; }
+  to { transform: rotate(var(--spin, 0deg)); opacity: 1; }
 }
 
 /* Rovi from above: the cream shell, the dark screen it wears its face on, four black
@@ -1019,6 +1075,9 @@ h2, h3 {
 
 @media (prefers-reduced-motion: reduce) {
   .robot, .robot-inner, .battery, .pip-slot { transition-duration: .01ms; }
+  /* The level has to be on screen at once, not built: `backwards` would otherwise hold
+     every tile and every sprite hidden until a delay that no longer runs. */
+  .cell, .sprite > *,
   .robot.is-bumping .robot-inner,
   .robot.is-happy .robot-inner,
   .block.is-running { animation: none; }

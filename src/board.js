@@ -102,6 +102,12 @@ var Board = (function () {
     var floor = document.createElement('div');
     floor.className = 'floor';
 
+    // The tiles rise into place one at a time when a level opens, and everything that
+    // stands on them drops in once the last one has landed. `--i` is a tile's turn in
+    // that sweep and `--tiles` how many turns there are; the timing itself is in the
+    // stylesheet, which is where the rest of the animation lives.
+    el.style.setProperty('--tiles', g.cols * g.rows);
+
     for (var y = 0; y < g.rows; y++) {
       for (var x = 0; x < g.cols; x++) {
         var cell = document.createElement('div');
@@ -109,6 +115,7 @@ var Board = (function () {
         cell.className = 'cell' + (wall ? ' cell-wall' : '');
         // A checkerboard tint makes it much easier for a child to count squares.
         if (!wall && (x + y) % 2 === 1) cell.classList.add('cell-alt');
+        cell.style.setProperty('--i', y * g.cols + x);
         floor.appendChild(cell);
         cellEls[x + ',' + y] = cell;
       }

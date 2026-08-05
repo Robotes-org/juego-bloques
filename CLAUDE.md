@@ -203,6 +203,23 @@ from above, navy chrome, a cream and cyan rover.
   indicator.
 - The clouds behind the board are five flat `linear-gradient` layers on `.board-wrap`,
   hard-edged on purpose. A blurred radial cloud would be the only soft thing on the page.
+- **Opening a level builds it**: the tiles rise into place one at a time, and once the
+  ground is finished everything standing on it drops in together. `board.js` only sets
+  the two numbers the timing needs — `--i`, a tile's turn in the sweep, and `--tiles`,
+  how many turns there are — and the animation itself lives in the stylesheet.
+  Three things about it are easy to break:
+  - The sprites wait for `--tiles` steps **plus one `--tile-rise`**. Leave the rise out
+    of that sum and the batteries start falling while the bottom row is still rising.
+  - `.board`'s own background is a shadow and not the grass colour. It is covered
+    completely once the tiles land, so it is only ever seen during the build — and
+    against green, tiles rise into a green square and the whole sweep is invisible.
+  - The drop is animated on the sprite's **child**, never on `.sprite` itself, whose
+    transform is what places it on the grid. The robot needs its own keyframes on top of
+    that, because it has to keep its heading while it falls, and its `translateY` is
+    written before the `rotate` so it falls down the screen rather than down its own
+    rotated frame.
+  The whole thing is off under `prefers-reduced-motion`, where `backwards` would
+  otherwise hold every tile hidden waiting for a delay that no longer runs.
 
 ## Design decisions worth keeping
 
