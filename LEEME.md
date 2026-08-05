@@ -14,6 +14,17 @@ El juego está dibujado como el concepto de **Rovi** (`assets/rovi-concept.png`)
 de cubos visto desde arriba, con pasto, piedra y un rover de cara celeste. Los bloques
 siguen con la forma de Scratch a propósito, porque es a donde pasan los niños después.
 
+**Todo el tablero está en 2.5D**: es una isla de cubos vista en diagonal, con el pasto,
+los muros, las pilas, la bandera y el robot dibujados desde una sola cámara fija. El
+robot tiene volumen y gira de verdad, así que cuando el niño pone un bloque de *girar* ve
+al robot dar la vuelta, no cambiar de dibujo. Cuando camina alejándose le ve la espalda,
+y por eso lleva una franja celeste en la cabeza que apunta siempre hacia donde avanzará.
+
+Ojo con esto en la sala: con el tablero girado, el "norte" del mapa queda arriba y a la
+izquierda. Los bloques y las pistas hablan siempre desde el robot ("dobla a la derecha"),
+no desde la pantalla, que es lo que debería salvarlo — pero vale la pena mirar cómo les
+resulta la primera vez.
+
 ## Cómo abrirlo
 
 Haz doble clic en `index.html`. Eso es todo: no necesita internet, ni instalación, ni
@@ -27,6 +38,9 @@ notebook del taller.
 - **Mover o sacar un bloque:** arrástralo. Si lo sueltas fuera del programa, se borra.
 - **Repetir:** los bloques que van adentro del *repetir* se ejecutan varias veces. Con
   los botones **−** y **+** se cambia cuántas.
+- **La bandera:** cuando el robot la toca, la bandera se deshace en un montón de cubos
+  que salen volando. Vale la pena dejar que los niños lo vean antes de apretar
+  "Siguiente".
 - **▶ Ejecutar:** el robot sigue el programa completo. El bloque que está corriendo se
   ilumina, para que el niño vea qué instrucción se está ejecutando.
 - **Paso:** ejecuta **un solo bloque** y espera. Sirve para encontrar el error cuando el
