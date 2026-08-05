@@ -8,30 +8,59 @@ var Board = (function () {
   var DIRS = { N: { dx: 0, dy: -1, deg: 0 }, E: { dx: 1, dy: 0, deg: 90 }, S: { dx: 0, dy: 1, deg: 180 }, O: { dx: -1, dy: 0, deg: 270 } };
   var ORDER = ['N', 'E', 'S', 'O'];
 
-  /* The robot is the brand's isotipo seen from above. Its antenna always points the
-     way it is about to walk, which is how a child tells north from south at a glance. */
+  /* Rovi, the rover of the concept art, seen from above. Every shape is a rectangle on a
+     four unit grid and nothing is rounded: that is the whole trick to drawing voxel, and
+     it survives being scaled down to a 28 pixel cell far better than curves do.
+
+     A rover seen from directly above would show the top of its head, not its face. This
+     one cheats and wears the screen flat, because the eyes and the antenna are how a
+     child reads which way the robot is about to walk — the same reason the antenna
+     points forward here and backwards in the concept. */
   var ROBOT_SVG =
     '<svg viewBox="0 0 64 64" class="robot-svg" aria-hidden="true">' +
-      '<path class="robot-antenna" d="M32 16 V9" stroke-width="4" stroke-linecap="round" fill="none"/>' +
-      '<circle class="robot-spark" cx="32" cy="6" r="5"/>' +
-      '<rect class="robot-wheel" x="3" y="26" width="6" height="24" rx="3"/>' +
-      '<rect class="robot-wheel" x="55" y="26" width="6" height="24" rx="3"/>' +
-      '<rect class="robot-body" x="7" y="16" width="50" height="42" rx="13"/>' +
-      '<circle class="robot-eye" cx="21" cy="33" r="7"/>' +
-      '<circle class="robot-eye" cx="43" cy="33" r="7"/>' +
-      '<rect class="robot-mouth" x="22" y="46" width="20" height="5" rx="2.5"/>' +
+      '<rect class="robot-spark" x="28" y="0" width="8" height="6"/>' +
+      '<rect class="robot-spark-shade" x="28" y="6" width="8" height="2"/>' +
+      '<rect class="robot-antenna" x="30" y="8" width="4" height="6"/>' +
+      '<rect class="robot-wheel" x="0" y="16" width="10" height="14"/>' +
+      '<rect class="robot-wheel" x="54" y="16" width="10" height="14"/>' +
+      '<rect class="robot-wheel" x="0" y="36" width="10" height="14"/>' +
+      '<rect class="robot-wheel" x="54" y="36" width="10" height="14"/>' +
+      '<rect class="robot-hub" x="2" y="20" width="6" height="6"/>' +
+      '<rect class="robot-hub" x="56" y="20" width="6" height="6"/>' +
+      '<rect class="robot-hub" x="2" y="40" width="6" height="6"/>' +
+      '<rect class="robot-hub" x="56" y="40" width="6" height="6"/>' +
+      '<rect class="robot-shell" x="8" y="14" width="48" height="46"/>' +
+      '<rect class="robot-shade" x="48" y="14" width="8" height="46"/>' +
+      '<rect class="robot-shade" x="8" y="52" width="48" height="8"/>' +
+      '<rect class="robot-screen" x="16" y="18" width="32" height="22"/>' +
+      /* Two blocks and a bar. The concept draws the eyes as pixel arcs and the first
+         attempt copied them, but a cell can be as small as 28 pixels, and at that size
+         three pixels of arc per eye are three specks of noise. Solid eyes survive. */
+      '<rect class="robot-eye" x="20" y="23" width="8" height="9"/>' +
+      '<rect class="robot-eye" x="36" y="23" width="8" height="9"/>' +
+      '<rect class="robot-eye" x="26" y="34" width="12" height="3"/>' +
+      '<rect class="robot-hub" x="8" y="44" width="6" height="8"/>' +
+      '<rect class="robot-hub" x="50" y="44" width="6" height="8"/>' +
+      '<rect class="robot-panel" x="20" y="46" width="24" height="6"/>' +
     '</svg>';
 
+  /* A pennant cut in three steps rather than on the diagonal, planted in a block of
+     dirt. Three steps and not six: finer stairs turn into a feather at cell size. */
   var GOAL_SVG =
     '<svg viewBox="0 0 64 64" aria-hidden="true">' +
-      '<path class="goal-pole" d="M18 57 V9" stroke-width="5" stroke-linecap="round" fill="none"/>' +
-      '<path class="goal-cloth" d="M20 11 H45 L38 22 L45 33 H20 Z"/>' +
+      '<rect class="goal-base" x="14" y="46" width="36" height="14"/>' +
+      '<rect class="goal-base-top" x="14" y="46" width="36" height="5"/>' +
+      '<rect class="goal-pole" x="24" y="6" width="6" height="44"/>' +
+      '<rect class="goal-cloth" x="30" y="8" width="24" height="9"/>' +
+      '<rect class="goal-cloth" x="30" y="17" width="18" height="9"/>' +
+      '<rect class="goal-cloth-shade" x="30" y="26" width="12" height="9"/>' +
     '</svg>';
 
   var BATTERY_SVG =
     '<svg viewBox="0 0 64 64" aria-hidden="true">' +
-      '<rect class="battery-cap" x="26" y="8" width="12" height="8" rx="2"/>' +
-      '<rect class="battery-body" x="18" y="16" width="28" height="42" rx="6"/>' +
+      '<rect class="battery-cap" x="26" y="6" width="12" height="6"/>' +
+      '<rect class="battery-body" x="16" y="12" width="32" height="44"/>' +
+      '<rect class="battery-shade" x="40" y="12" width="8" height="44"/>' +
       '<path class="battery-bolt" d="M34 24 L24 40 H31 L29 52 L40 34 H33 Z"/>' +
     '</svg>';
 
