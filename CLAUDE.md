@@ -34,8 +34,9 @@ python3 -m http.server 8000  # only if you want a server, not required
 - `index.html` — the whole page structure.
 - `styles.css` — all the styles.
 - `src/levels.js` — the twelve levels as ASCII maps. **Start here to change the game.**
-- `src/board.js` — parses a map, draws the grid, moves the robot.
-- `src/robot.js` — Rovi as a voxel model, rendered to a canvas. **Loads before `board.js`.**
+- `src/board.js` — parses a map, builds it as a world of boxes, moves the robot.
+- `src/voxel.js` — the one camera the board is drawn under. **Loads before the two below.**
+- `src/models.js` — every shape on the board, as boxes: ground, wall, flag, battery, Rovi.
 - `src/editor.js` — the palette and the block tree the child builds, including drag and drop.
 - `src/runner.js` — flattens the block tree into moves and plays them back.
 - `src/game.js` — glue: level navigation, progress, messages, win dialog.
@@ -178,92 +179,93 @@ would lie.
 
 ## The Rovi skin
 
-The page is dressed as the concept sheet in `assets/rovi-concept.png`: a voxel world seen
-from above, navy chrome, a cream and cyan rover.
+The page is dressed as the concept sheet in `assets/rovi-concept.png`: a voxel world,
+navy chrome, a cream and cyan rover.
 
-- **The board stays top-down. It is not going isometric.** Every level map, the drag-and-
-  drop hit testing and the whole grid of tiles are written against a square seen from
-  directly above, and an isometric board rewrites all of them for a change of camera
-  angle. Depth is faked the way a voxel game fakes it in a map view: **a lit top edge and
-  a shaded bottom edge on a flat face**, which is what `--face-lit` and `--face-dark` are
-  for. Every block on the page uses them — the tiles, the walls, the buttons, the pieces.
-- **The robot is the exception, and it is a real model** — see *The robot in 2.5D* below.
-  A character with volume standing on a flat map is the oldest trick in the genre; what
-  makes it work is the contact shadow, not the camera.
-- **Sprites are rectangles on a four unit grid inside a 64 unit box, and nothing is
-  rounded.** That is the whole of the voxel look, and it survives being scaled down to a
-  28 pixel cell far better than curves do.
-- **Detail that is smaller than about four units disappears at cell size.** Rovi's eyes
-  were first drawn as the concept's pixel arcs, three rectangles each, and on the board
-  they were six specks of noise; they are solid blocks now. The flag was six steps and
-  read as a feather; it is three. When in doubt, draw fewer and bigger shapes.
-## The robot in 2.5D
-
-`src/robot.js` is a small voxel model of Rovi — twenty boxes — rendered to a canvas by
-hand under a fixed camera, and it replaces the flat sprite the robot used to be. Board.js
-owns the grid and the walking; the module owns everything that happens inside the square.
-
-**Why a model rather than four drawings, one per heading.** Turning is what this game
-teaches. A child presses *girar a la derecha* and has to see the robot turn — four
-drawings can only blink between headings, and the ninety degrees in between is the part
-that means something. It also pays for itself in light: the faces are shaded in world
-space, so a side that is bright walking north goes dark once the robot turns east.
-
-The whole renderer is short because every part is an axis-aligned box: six faces, a
-normal each, drawn back to front by the depth of each box's centre. No z-buffer, no
-per-face sorting, no WebGL. It still opens from a pendrive with a double click.
-
-Things worth knowing before changing it:
-
-- **The camera pitch is a compromise and not a free number.** Straight down is the old
-  flat sprite and shows no volume; low angles show a handsome robot that stops agreeing
-  with a board drawn from directly above. 52° keeps the tiles reading as squares and
-  still lets the face be seen.
-- **The model is narrower than the sprite was** (`UNIT`, about two thirds of a cell) and
-  its ground point sits *below* the middle of the square. A model with height grows
-  upwards from where it is planted, and planted dead centre it reads as standing a row
-  too far north.
-- **The contact shadow is not decoration.** It is the only thing tying a robot with
-  height to a flat square. Take it away and it floats.
-- **The cyan strip across the top of the head is there for the game, not for the look.**
-  It is not on the concept sheet. When the robot walks away from the camera its face is
-  hidden, and without a mark on a surface the camera can always see, there is no way to
-  tell which way it is about to go.
-- Colours are read off the `--rovi-*` tokens at startup and shaded arithmetically, so the
-  robot still follows the palette. The fallbacks in `INK` exist because a missing custom
-  property produces an unparseable `fillStyle`, which the canvas ignores *without an
-  error* — the robot would just quietly stop being drawn.
-- The bump and the celebration hop live in the model now, as a shove along whatever the
-  robot is facing and a jump straight up. `prefers-reduced-motion` is checked in JS,
-  because CSS cannot reach inside a canvas.
-- The animation loop runs only while something is moving and stops itself afterwards.
-
-The flag, the batteries and the walls are still flat. A model character on a drawn map is
-a deliberate convention, but if they are ever given volume too, they should be drawn by
-the same renderer and under the same camera rather than by hand — two cameras on one
-board is the one thing that would look broken.
+- Everything outside the board fakes depth the way a flat interface can: **a lit top edge
+  and a shaded bottom edge**, which is what `--face-lit` and `--face-dark` are for. Every
+  panel, chip and button uses them.
 - The goal flag is cyan and the grass is green, which is not a free choice: a green flag
-  on green ground disappears. Cyan is also the concept's own colour for something
-  powered up, which is why it is on the flag, the eyes, the running block and the drop
-  indicator.
+  on green ground disappears. Cyan is also the concept's own colour for something powered
+  up, which is why it is on the flag, the eyes, the running block and the drop indicator.
 - The clouds behind the board are five flat `linear-gradient` layers on `.board-wrap`,
   hard-edged on purpose. A blurred radial cloud would be the only soft thing on the page.
-- **Opening a level builds it**: the tiles rise into place one at a time, and once the
-  ground is finished everything standing on it drops in together. `board.js` only sets
-  the two numbers the timing needs — `--i`, a tile's turn in the sweep, and `--tiles`,
-  how many turns there are — and the animation itself lives in the stylesheet.
-  Three things about it are easy to break:
-  - The sprites wait for `--tiles` steps **plus one `--tile-rise`**. Leave the rise out
-    of that sum and the batteries start falling while the bottom row is still rising.
-  - `.board`'s own background is a shadow and not the grass colour. It is covered
-    completely once the tiles land, so it is only ever seen during the build — and
-    against green, tiles rise into a green square and the whole sweep is invisible.
-  - The drop is animated on the sprite's **child**, never on `.sprite` itself, whose
-    transform is what places it on the grid. That is also why the robot can share the
-    same keyframes as the flag and the batteries: its heading lives in the model, not in
-    a CSS `rotate` the drop would have to carry.
-  The whole thing is off under `prefers-reduced-motion`, where `backwards` would
-  otherwise hold every tile hidden waiting for a delay that no longer runs.
+- The three battery pips beside the level name are the last flat drawing of a battery
+  left in the page, and the only reason `.pip .battery-*` fill rules still exist.
+
+## The board is one canvas, under one camera
+
+The board — ground, walls, flag, batteries and robot — is a pile of axis-aligned boxes
+painted into a single canvas from one fixed viewpoint: the map turned 45° and looked at
+from above and in front. Three files, one job each:
+
+- `src/voxel.js` — the camera, the projection, the lighting and the painting. Nothing in
+  it knows what a level is.
+- `src/models.js` — every shape on the board, as boxes, measured in fractions of a tile.
+- `src/board.js` — the level, the state and the clock. It owns the animation loop and
+  exposes exactly the API the runner has always called.
+
+**The rule worth protecting is that there is one camera.** The way it gets broken is not
+by a redesign, it is by drawing "just this one thing" some other way — a CSS marker on
+top, a second canvas, an icon positioned by hand. Anything that appears on the board goes
+through `models.js` and gets drawn with everything else.
+
+The earlier version of this file said an isometric board would rewrite the level maps and
+the drag-and-drop hit testing. That was wrong about the second half and worth correcting:
+**the board has no pointer interaction at all** — the dragging is in the block editor,
+which never touches it. The maps did not change either. What changed was only how the
+board is drawn.
+
+Things that are easy to get wrong:
+
+- **Nothing may stand taller than `TALL`** (22 units, about 0.85 of a tile). Turned 45°
+  and seen from here, one square is about 14 units of screen height, while a box of
+  height *h* reaches *h·cos(pitch)* up the screen. Go over the limit and a thing draws
+  itself into the square behind it: the first flagpole was 30 units and ran straight
+  through a robot standing a row further back. The robot is the one exception, and only
+  because it is what the eye is following anyway.
+- **Painter's algorithm is exact here, not approximate.** Every part is a convex box on a
+  common plane, so sorting by the depth of each box's centre is enough — no z-buffer, no
+  per-face sorting, no WebGL. Keep new shapes convex and box-shaped and it stays true.
+- **Wall blocks are a unit narrower than their square.** Flush against each other they
+  merge into one grey slab and a child can no longer count how many squares a wall takes
+  up. The thin line of grass between them is what makes them countable.
+- **The ground is grass on top and soil down the sides.** Only the sides at the very edge
+  of the board are ever seen, which is exactly where a world made of blocks should look
+  like it was cut out of the earth. The checker is in lightness and not in hue — two
+  colours read as two terrains, and a child asks which one is water.
+- **The contact shadow under the robot is not decoration.** It is the only thing tying
+  something with height to the square it stands on. It is a flat slab a hair above the
+  grass rather than a drawn ellipse, so it sorts with everything else and a wall in front
+  of it covers it properly.
+- **The cyan strip across the top of the robot's head is there for the game, not for the
+  look.** It is not on the concept sheet. When the robot walks away from the camera its
+  face is hidden, and without a mark on a surface the camera can always see there is no
+  way to tell which way it is about to go.
+- **Colours are read off the `--rovi-*` tokens at startup**, so the board still follows
+  the palette. The fallbacks in `voxel.js` exist because a missing custom property
+  produces an unparseable `fillStyle`, which the canvas ignores *without an error* — the
+  board would just quietly stop being drawn. For the same reason, **do not delete a
+  `--rovi-*` token because CSS never mentions it**: half of them are only read from JS.
+- **`fit()` measures rather than calculates.** It projects the world at scale 1, takes the
+  outline, and picks a scale from it — which is why it copes with any level shape without
+  knowing anything about the map. The room it leaves above is the robot's own height: it
+  can be standing on the farthest square, where its head reaches past the top edge of the
+  ground.
+- **The board is never told how fast the child set the game.** It times the gap between
+  two orders from the runner and moves in a little less than that, so the robot always
+  arrives before it is asked to do the next thing. That is why the speed toggle needs no
+  wiring here.
+- **Opening a level builds it**: one block of ground at a time, from the far corner
+  towards the near one, and then everything standing on the world drops in together. The
+  sweep runs away-to-near because with the board turned 45° that reads as the world
+  coming to meet you. A wall and the ground under it are one item so they rise together —
+  a block arriving on top of a square still on its way up looks like a mistake.
+- `prefers-reduced-motion` is checked in JS and switches off the build, the walk and the
+  turn. CSS cannot reach inside a canvas, so nothing about the board appears in the media
+  query in `styles.css`.
+- The animation loop runs only while something is moving and stops itself afterwards.
+
 
 ## Design decisions worth keeping
 
@@ -291,16 +293,11 @@ board is the one thing that would look broken.
 - Outline colours are `color-mix` of the block colour towards Pizarra, not two more hex
   values, so they follow the tokens. A browser too old for `color-mix` just loses the
   outline.
-- **Never put a percentage `padding` on a `.sprite`.** A percentage padding resolves
-  against the *board's* width, not the sprite's, so `padding: 12%` on a battery was wider
-  than a whole cell, collapsed its content box to zero and made every battery invisible
-  while the model still counted them. Padding goes on the inner `<svg>`.
-- The robot is still two nested elements, but the split means something different now
-  that it is a model: the outer one walks the grid (`translate`), the inner one holds the
-  canvas. Turning, bumping and cheering all happen inside that canvas, in three
-  dimensions, so nothing about the heading is expressed in CSS any more.
-- The board floor is checkered in lightness, not in hue. An earlier version alternated
-  Menta and Cielo, and two different colours read as two different terrains.
+- Nothing on the board is an element any more, so the old rules about sprites and cells
+  are gone with them. One is worth keeping as a warning about percentages in CSS: a
+  `padding: 12%` on a battery sprite resolved against the *board's* width rather than the
+  sprite's, came out wider than a whole cell, collapsed the content box to zero and made
+  every battery invisible while the model still counted them.
 - The program is redrawn from the block tree after every edit. Programs are tens of
   blocks at most, so a full redraw is fast enough and far easier to trust.
 - Drag and drop uses pointer events, not the HTML5 drag-and-drop API, which cannot show
@@ -321,4 +318,8 @@ board is the one thing that would look broken.
 - Touch support. The drag code uses pointer events and already has `touch-action: none`,
   so tablets are close, but nothing has been tested on one and the layout is built for a
   notebook screen.
+- Watching a class use the turned board. A 45° world means "north" is now up and to the
+  left, and nobody has yet seen an eight year old predict *avanzar* on it. The hints and
+  the block names are all relative to the robot rather than to the screen, which should
+  be what saves it, but that is a guess until a session says otherwise.
 - Self-hosted Space Grotesk and Inter as subset `woff2`, same as `website`.

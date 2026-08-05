@@ -1,10 +1,16 @@
 /* Ruta Robot — all the styles for the game.
 
-   This is the "Rovi" concept skin (`assets/rovi concept.png`): a voxel world seen from
-   above, dark navy chrome, cream and cyan robot, grass and stone blocks. The board keeps
-   its top-down grid — an isometric board would break the robot's rotation, the drag and
-   drop and every level map — so depth is faked the way a voxel game fakes it in a map
-   view: a light top edge and a dark bottom edge on every block.
+   This is the "Rovi" concept skin (`assets/rovi-concept.png`): a voxel world, dark navy
+   chrome, a cream and cyan robot, grass and stone blocks.
+
+   THE BOARD IS NOT STYLED HERE. It is a single canvas — the ground, the walls, the flag,
+   the batteries and the robot are all boxes drawn under one camera, in src/voxel.js. The
+   only rule that matters about it is that there is exactly one camera; the way that gets
+   broken is by drawing "just this one thing" some other way, in CSS, on top.
+
+   What is left in this file is the chrome around the board, and it fakes depth the way a
+   flat interface can: a light top edge and a dark bottom edge on every panel, chip and
+   button, which is what --face-lit and --face-dark are for.
 
    COLOURS ARE THE ONE PLACE THIS BRANCH BREAKS THE HOUSE RULE. The rest of the repo
    resolves every colour through the `--rb-*` tokens copied from ~/marca. The concept
@@ -117,19 +123,12 @@
   --edge-move: color-mix(in srgb, var(--rovi-agua) 76%, var(--rovi-noche));
   --edge-loop: color-mix(in srgb, var(--rovi-naranja) 70%, var(--rovi-noche));
 
-  --game-wall: var(--rovi-piedra);
-  --game-floor: var(--rovi-pasto);
+  /* The ground, the walls and everything else on the board are painted by voxel.js,
+     which reads the --rovi-* tokens above directly. They have no --game-* alias because
+     nothing in this file paints them any more — but they are still in use, and deleting
+     one because CSS never mentions it would blank part of the world. */
   --game-spark: var(--rovi-sol);
   --game-go: var(--rovi-pasto);
-
-  /* Opening a level builds its world: one tile at a time, then everything on top drops
-     in together. `--tile-step` is how long a tile waits for its turn and `--tile-rise`
-     how long it then takes to land, so the build lasts one step per tile plus one rise.
-     At these two the biggest level, seven by seven, is finished inside 1.3 seconds —
-     the intro plays on every level a child opens, and it cannot be something they learn
-     to sit through. */
-  --tile-step: 12ms;
-  --tile-rise: .26s;
 
   --game-topbar: 3.5rem;
   --game-shadow: 0 2px 0 rgba(0, 0, 0, .22), 0 10px 24px rgba(0, 0, 0, .28);
@@ -342,6 +341,13 @@ h2, h3 {
 }
 
 .pip-slot.is-on .pip { opacity: 1; filter: none; }
+
+/* The pips are the last drawing of a battery left in the page: on the board it is three
+   boxes under the camera now, but the three sockets beside the level name are flat SVG
+   and need their own fills. */
+.pip .battery-body { fill: var(--game-spark); }
+.pip .battery-shade { fill: color-mix(in srgb, var(--game-spark) 72%, var(--rovi-tierra)); }
+.pip .battery-cap, .pip .battery-bolt { fill: var(--rovi-tinta); }
 
 /* ---------- blocks ---------- */
 
@@ -711,14 +717,13 @@ h2, h3 {
 
 .board-panel { gap: var(--rb-space-2); }
 
-/* The world sits under the concept's sky, with four voxel clouds ruled into it. Each
+/* The world sits under the concept's sky, with five voxel clouds ruled into it. Each
    cloud is a flat `linear-gradient` layer — a hard-edged rectangle, because a blurred
    radial one would be the only soft thing on the page. */
 .board-wrap {
   flex: 1;
   min-height: 0;
   display: grid;
-  place-items: center;
   padding: var(--rb-space-2);
   border-radius: 10px;
   background-color: var(--rovi-cielo);
@@ -735,156 +740,13 @@ h2, h3 {
   box-shadow: inset 0 2px 6px rgba(0, 0, 0, .3);
 }
 
-/* A slab of world: the grid of blocks, with a dark rim and a hard edge under it so the
-   whole board reads as one thick piece of ground sitting in the sky. */
-.board {
-  position: relative;
-  --cell: 3rem;
-  width: calc(var(--cell) * var(--cols));
-  height: calc(var(--cell) * var(--rows));
-  padding: 0;
-  border: 3px solid var(--rovi-tinta);
-  border-radius: 4px;
-  /* Not the grass colour, on purpose. The tiles cover this completely once they have
-     landed, so it is only ever seen while the level is building itself — and against
-     green the tiles rise into a green square and the sweep is invisible. A shadow is
-     what a plot of ground with nothing on it should look like. */
-  background: rgba(0, 0, 0, .18);
-  box-shadow: 0 6px 0 rgba(0, 0, 0, .3), 0 14px 26px rgba(0, 0, 0, .35);
-}
+/* There is nothing left to style here. The board is a single canvas: the ground, the
+   walls, the flag, the batteries and the robot are all boxes drawn under one camera —
+   see src/voxel.js. It has no CSS size of its own on purpose, because `fit()` measures
+   this element to decide how big a square can be. */
+.board { position: relative; width: 100%; height: 100%; }
 
-.floor {
-  display: grid;
-  grid-template-columns: repeat(var(--cols), var(--cell));
-  grid-template-rows: repeat(var(--rows), var(--cell));
-  border-radius: inherit;
-  overflow: hidden;
-}
-
-/* One floor colour, checkered only in lightness. Two different hues read as two
-   different terrains, and a child asks whether the blue squares are water. Each square
-   is a grass block seen from above: lit on its top edge, shaded on its bottom one. */
-.cell {
-  background: var(--game-floor);
-  box-shadow:
-    inset 0 3px 0 rgba(255, 255, 255, .16),
-    inset 0 -3px 0 rgba(0, 0, 0, .14),
-    inset 0 0 0 1px rgba(0, 0, 0, .07);
-  /* `backwards` is what keeps a tile invisible until its turn comes: without it every
-     tile is drawn in place first and the sweep only starts afterwards. */
-  animation: tile-rise var(--tile-rise) ease-out backwards;
-  animation-delay: calc(var(--i, 0) * var(--tile-step));
-}
-
-/* Rising and not falling: the ground comes up out of the sky it is floating in. The
-   travel is short because `.floor` clips at its own edge, and a tile that starts far
-   below its square would be cut in half on the way up. */
-@keyframes tile-rise {
-  from { transform: translateY(12px) scale(.92); opacity: 0; }
-  to { transform: none; opacity: 1; }
-}
-
-.cell-alt { background: var(--rovi-pasto-claro); }
-
-/* Walls are stone cubes, not holes: square-cornered, lit hard on top and cut dark
-   underneath, so they stand above the grass instead of sinking into it. */
-.cell-wall {
-  background: var(--game-wall);
-  background-image:
-    linear-gradient(135deg, rgba(255, 255, 255, .1) 25%, transparent 25%, transparent 50%,
-      rgba(255, 255, 255, .1) 50%, rgba(255, 255, 255, .1) 75%, transparent 75%);
-  background-size: 8px 8px;
-  border-radius: 2px;
-  box-shadow:
-    inset 0 4px 0 rgba(255, 255, 255, .26),
-    inset 4px 0 0 rgba(255, 255, 255, .12),
-    inset -4px 0 0 rgba(0, 0, 0, .16),
-    inset 0 -5px 0 rgba(0, 0, 0, .34),
-    inset 0 0 0 1px var(--rovi-tinta);
-}
-
-.sprite {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: var(--cell);
-  height: var(--cell);
-  transform: translate(calc(var(--x) * var(--cell)), calc(var(--y) * var(--cell)));
-}
-
-.sprite svg { width: 100%; height: 100%; display: block; }
-
-/* Padding goes on the svg, never on the .sprite: a percentage padding resolves against
-   the *board's* width, so 12% on a sprite was wider than a whole cell and collapsed the
-   drawing to nothing. That is how the batteries went missing. */
-.goal svg { padding: 6%; }
-.battery svg { padding: 14%; }
-
-/* Once the last tile has landed, everything standing on the world drops onto it — all
-   of it together, so a level reads first as ground and then as a puzzle laid out on it.
-   The delay is the whole build — a step for every tile plus the last one's rise — and
-   then a beat. Leaving the rise out of that sum is the obvious mistake: the batteries
-   start falling while the bottom row is still on its way up.
-
-   The animation goes on the sprite's child and never on the sprite itself: the sprite's
-   own transform is what places it on the grid, and animating that would send every
-   battery falling from the top left corner of the board. */
-.sprite > * {
-  animation: sprite-drop .36s cubic-bezier(.25, .9, .35, 1.15) backwards;
-  animation-delay: calc(var(--tiles, 30) * var(--tile-step) + var(--tile-rise) + 40ms);
-}
-
-@keyframes sprite-drop {
-  from { transform: translateY(-55%); opacity: 0; }
-  60% { opacity: 1; }
-  to { transform: none; opacity: 1; }
-}
-
-.robot { z-index: 3; transition: transform .3s ease-in-out; }
-
-.robot-inner { width: 100%; height: 100%; }
-
-/* The robot is the one thing on the board with height, so it is drawn into a canvas
-   that is wider than the square it stands on and overflows it — see src/robot.js. The
-   canvas is centred on the cell and the model's own ground point is offset inside it,
-   which is what decides where the robot appears to be standing. Nothing here rotates:
-   turning happens in the model, under a fixed camera. */
-.robot-canvas {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-
-/* The colours the model is painted in are read straight off these tokens by robot.js
-   and shaded per face there, so the robot has no fill rules of its own any more. The
-   bump and the cheer moved into the model too: both are movements in three dimensions
-   now — a shove along whatever the robot is facing, and a hop straight up. */
-
-/* The flag is cyan, not green: it stands on grass, and the concept's own beacon is the
-   same cyan as Rovi's eyes. It turns amber once it is reached, because yellow is the
-   reward everywhere else on this page. */
-.goal { z-index: 1; }
-.goal-base { fill: var(--rovi-tierra); }
-.goal-base-top { fill: color-mix(in srgb, var(--rovi-tierra) 78%, white); }
-.goal-pole { fill: var(--rovi-tinta); }
-.goal-cloth { fill: var(--rovi-cian); }
-.goal-cloth-shade { fill: var(--rovi-agua); }
-.goal.is-reached .goal-cloth { fill: var(--game-spark); }
-.goal.is-reached .goal-cloth-shade { fill: var(--rovi-tierra); }
-
-.battery { z-index: 2; transition: transform .25s ease, opacity .25s ease; }
-.battery svg { filter: drop-shadow(0 2px 0 rgba(0, 0, 0, .25)); }
-.battery-body { fill: var(--game-spark); }
-.battery-shade { fill: color-mix(in srgb, var(--game-spark) 72%, var(--rovi-tierra)); }
-.battery-cap { fill: var(--rovi-tinta); }
-.battery-bolt { fill: var(--rovi-tinta); }
-
-.battery.is-taken {
-  transform: translate(calc(var(--x) * var(--cell)), calc(var(--y) * var(--cell))) scale(.2);
-  opacity: 0;
-}
+.board-canvas { display: block; }
 
 /* ---------- controls ---------- */
 
@@ -1045,13 +907,11 @@ h2, h3 {
   .board-wrap { min-height: 16rem; }
 }
 
-/* robot.js checks this query itself and stops turning, bumping and hopping — CSS cannot
-   reach inside a canvas. */
+/* Nothing on the board is listed here, and it is not an oversight: board.js checks this
+   query itself and builds the level, walks and turns with every animation switched off.
+   CSS cannot reach inside a canvas. */
 @media (prefers-reduced-motion: reduce) {
-  .robot, .battery, .pip-slot { transition-duration: .01ms; }
-  /* The level has to be on screen at once, not built: `backwards` would otherwise hold
-     every tile and every sprite hidden until a delay that no longer runs. */
-  .cell, .sprite > *,
+  .pip-slot { transition-duration: .01ms; }
   .block.is-running { animation: none; }
   .block.is-running { filter: drop-shadow(0 0 4px var(--rovi-cian)); }
 }

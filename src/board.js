@@ -1,32 +1,28 @@
-/* Board: parses a level map and draws it, then moves the robot around it.
-   Everything is plain DOM — the robot is one absolutely positioned element whose
-   `transform` is animated by CSS, which is why walking and turning look smooth
-   without a single frame of JavaScript animation code. */
+/* Board: parses a level map, builds it as a world of blocks and moves the robot around
+   it. The drawing is all in voxel.js, under one fixed camera; the shapes are all in
+   models.js; what lives here is the level, the state and the clock.
+
+   Nothing outside this file knows the board is a canvas. `moveTo`, `turnTo`, `bump`,
+   `takeBattery` and `celebrate` are the same calls the runner has always made — the
+   difference is that they now set a target and let the animation loop get there, instead
+   of setting a CSS property and letting the browser do it. */
 var Board = (function () {
   'use strict';
 
   var DIRS = { N: { dx: 0, dy: -1, deg: 0 }, E: { dx: 1, dy: 0, deg: 90 }, S: { dx: 0, dy: 1, deg: 180 }, O: { dx: -1, dy: 0, deg: 270 } };
   var ORDER = ['N', 'E', 'S', 'O'];
 
-  /* A pennant cut in three steps rather than on the diagonal, planted in a block of
-     dirt. Three steps and not six: finer stairs turn into a feather at cell size. */
-  var GOAL_SVG =
-    '<svg viewBox="0 0 64 64" aria-hidden="true">' +
-      '<rect class="goal-base" x="14" y="46" width="36" height="14"/>' +
-      '<rect class="goal-base-top" x="14" y="46" width="36" height="5"/>' +
-      '<rect class="goal-pole" x="24" y="6" width="6" height="44"/>' +
-      '<rect class="goal-cloth" x="30" y="8" width="24" height="9"/>' +
-      '<rect class="goal-cloth" x="30" y="17" width="18" height="9"/>' +
-      '<rect class="goal-cloth-shade" x="30" y="26" width="12" height="9"/>' +
-    '</svg>';
+  var TILE = Models.TILE;
 
-  var BATTERY_SVG =
-    '<svg viewBox="0 0 64 64" aria-hidden="true">' +
-      '<rect class="battery-cap" x="26" y="6" width="12" height="6"/>' +
-      '<rect class="battery-body" x="16" y="12" width="32" height="44"/>' +
-      '<rect class="battery-shade" x="40" y="12" width="8" height="44"/>' +
-      '<path class="battery-bolt" d="M34 24 L24 40 H31 L29 52 L40 34 H33 Z"/>' +
-    '</svg>';
+  /* Opening a level builds it: one block of ground at a time, from the far corner
+     towards the near one, and then everything that stands on the world drops in. */
+  var BUILD_STEP = 14, BUILD_RISE = 280, BUILD_PAUSE = 60, DROP_MS = 360;
+
+  /* Walking and turning follow the speed the child chose, which the board is never told:
+     it measures the gap between two orders instead and moves in a little less than that,
+     so the robot always arrives before it is asked to do the next thing. */
+  var MOVE_MIN = 90, MOVE_MAX = 300;
+  var BUMP_MS = 380, HOP_MS = 520, TAKE_MS = 300;
 
   /* Turns the ASCII rows of a level into something the game can query. */
   function parse(level) {
@@ -54,71 +50,180 @@ var Board = (function () {
     };
   }
 
+  function ease(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+  function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
   function create(el, level) {
     var g = parse(level);
-    var cellEls = {};
-    var batteryEls = {};
+    var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     el.innerHTML = '';
-    el.style.setProperty('--cols', g.cols);
-    el.style.setProperty('--rows', g.rows);
+    var canvas = document.createElement('canvas');
+    canvas.className = 'board-canvas';
+    canvas.setAttribute('role', 'img');
+    canvas.setAttribute('aria-label', 'Tablero del nivel');
+    el.appendChild(canvas);
 
-    var floor = document.createElement('div');
-    floor.className = 'floor';
+    var scene = Voxel.create(canvas, el);
 
-    // The tiles rise into place one at a time when a level opens, and everything that
-    // stands on them drops in once the last one has landed. `--i` is a tile's turn in
-    // that sweep and `--tiles` how many turns there are; the timing itself is in the
-    // stylesheet, which is where the rest of the animation lives.
-    el.style.setProperty('--tiles', g.cols * g.rows);
+    /* The map is laid out around the origin so that the projected world is centred on
+       whatever space the board is given. */
+    function wx(gx) { return (gx - (g.cols - 1) / 2) * TILE; }
+    function wz(gy) { return (gy - (g.rows - 1) / 2) * TILE; }
 
+    /* ---------- the world ---------- */
+
+    var ground = [];
     for (var y = 0; y < g.rows; y++) {
       for (var x = 0; x < g.cols; x++) {
-        var cell = document.createElement('div');
-        var wall = g.walls[x + ',' + y];
-        cell.className = 'cell' + (wall ? ' cell-wall' : '');
-        // A checkerboard tint makes it much easier for a child to count squares.
-        if (!wall && (x + y) % 2 === 1) cell.classList.add('cell-alt');
-        cell.style.setProperty('--i', y * g.cols + x);
-        floor.appendChild(cell);
-        cellEls[x + ',' + y] = cell;
+        var isWall = !!g.walls[x + ',' + y];
+        // A wall and the ground under it are one item so they rise together: a block
+        // arriving on top of a square that is still on its way up looks like a mistake.
+        var model = Models.tile((x + y) % 2 === 1);
+        if (isWall) model = model.concat(Models.wall());
+        ground.push({ model: model, x: wx(x), z: wz(y), y: 0, gx: x, gy: y, wall: isWall });
       }
     }
-    el.appendChild(floor);
 
-    var goalEl = document.createElement('div');
-    goalEl.className = 'sprite goal';
-    goalEl.innerHTML = GOAL_SVG;
-    place(goalEl, g.goal.x, g.goal.y);
-    el.appendChild(goalEl);
+    /* One at a time, but away from the camera first: with the board turned 45° the far
+       corner is where the eye starts, and a sweep that runs towards the viewer reads as
+       the world coming to meet them. Ties are broken so that no two blocks ever share a
+       turn — the point of the whole thing is that they arrive one by one. */
+    ground.slice().sort(function (a, b) {
+      return (a.gx + a.gy) - (b.gx + b.gy) || a.gx - b.gx;
+    }).forEach(function (t, i) { t.turn = i; });
 
-    g.batteries.forEach(function (b) {
-      var bEl = document.createElement('div');
-      bEl.className = 'sprite battery';
-      bEl.innerHTML = BATTERY_SVG;
-      place(bEl, b.x, b.y);
-      el.appendChild(bEl);
-      batteryEls[b.x + ',' + b.y] = bEl;
+    var goalItem = { model: Models.flag(false), x: wx(g.goal.x), z: wz(g.goal.y), y: 0 };
+
+    var batteryItems = g.batteries.map(function (b) {
+      return { model: Models.battery(), x: wx(b.x), z: wz(b.y), y: 0, gx: b.x, gy: b.y, takenAt: 0 };
     });
 
-    // The robot is still two nested elements, but the split means something different
-    // now that it is a model: the outer one walks the grid (translate), and the inner
-    // one holds the canvas Robot draws into. Turning, bumping and cheering all happen
-    // inside that canvas, in the model's own three dimensions — see src/robot.js.
-    var robotEl = document.createElement('div');
-    robotEl.className = 'sprite robot';
-    robotEl.innerHTML = '<div class="robot-inner"></div>';
-    el.appendChild(robotEl);
-    var rovi = Robot.create(robotEl.firstChild);
+    var shadowItem = { model: Models.shadow(), x: 0, z: 0, y: 0, unlit: true, alpha: 0.22 };
+    var robotItem = { model: Models.ROVI, x: 0, z: 0, y: Models.GROUND, yaw: 0 };
 
-    function place(sprite, x, y) {
-      sprite.style.setProperty('--x', x);
-      sprite.style.setProperty('--y', y);
+    var props = [goalItem].concat(batteryItems);
+    var everything = ground.concat(props, [shadowItem, robotItem]);
+
+    /* ---------- state ---------- */
+
+    var builtAt = performance.now();
+    var buildEnd = builtAt + ground.length * BUILD_STEP + BUILD_RISE;
+    var dropAt = buildEnd + BUILD_PAUSE;
+
+    var pos = { x: g.start.x, y: g.start.y };      /* the square the robot is on */
+    var from = { x: g.start.x, y: g.start.y };     /* and the one it is walking out of */
+    var moveAt = 0, moveMs = MOVE_MAX;
+    var spin = ORDER.indexOf(level.dir) * 90;
+    var yawFrom = spin, yawTo = spin, turnAt = 0, turnMs = MOVE_MAX;
+    var bumpAt = 0, hopAt = 0;
+    var lastOrder = 0;
+    var raf = 0;
+
+    /* Each order the runner gives is timed against the one before it, which is how the
+       board follows the speed toggle without being told about it. */
+    function pace() {
+      var now = performance.now();
+      var gap = lastOrder ? now - lastOrder : MOVE_MAX;
+      lastOrder = now;
+      return reduced ? 1 : clamp(gap * 0.8, MOVE_MIN, MOVE_MAX);
     }
 
-    /* The robot keeps turning in the same rotational direction instead of
-       snapping back through 0°, so four right turns spin it a full circle. */
-    var spin = ORDER.indexOf(level.dir) * 90;
+    function frame() {
+      var now = performance.now();
+      var busy = false;
+
+      ground.forEach(function (t) {
+        var at = builtAt + t.turn * BUILD_STEP;
+        var k = (now - at) / BUILD_RISE;
+        if (reduced || k >= 1) { t.y = 0; t.alpha = 1; return; }
+        busy = true;
+        if (k <= 0) { t.alpha = 0; t.y = -14; return; }
+        var e = ease(k);
+        t.alpha = e;
+        t.y = -14 * (1 - e);
+      });
+
+      /* Everything that stands on the world drops onto it together, once the last block
+         of ground has landed. */
+      var drop = reduced ? 1 : (now - dropAt) / DROP_MS;
+      var dropLift = 0, dropAlpha = 1;
+      if (drop < 1) {
+        busy = true;
+        var d = clamp(drop, 0, 1);
+        dropLift = 34 * (1 - ease(d));
+        dropAlpha = d <= 0 ? 0 : Math.min(1, d * 2);
+      }
+      props.forEach(function (p) {
+        p.lift = dropLift;
+        p.alpha = p.takenAt ? p.alpha : dropAlpha;
+      });
+
+      /* A collected battery lifts off its square and fades, which reads as taken rather
+         than as a drawing that disappeared. */
+      batteryItems.forEach(function (b) {
+        if (!b.takenAt) return;
+        var k = reduced ? 1 : (now - b.takenAt) / TAKE_MS;
+        if (k >= 1) { b.alpha = 0; return; }
+        busy = true;
+        b.alpha = 1 - k;
+        b.lift = dropLift + 18 * k;
+      });
+
+      /* Walking is interpolated between two squares rather than snapped, so a step
+         reads as a step. */
+      var gx = pos.x, gy = pos.y;
+      if (moveAt) {
+        var m = (now - moveAt) / moveMs;
+        if (m >= 1) moveAt = 0;
+        else {
+          busy = true;
+          var e2 = ease(m);
+          gx = from.x + (pos.x - from.x) * e2;
+          gy = from.y + (pos.y - from.y) * e2;
+        }
+      }
+
+      var yaw = yawTo;
+      if (turnAt) {
+        var t2 = (now - turnAt) / turnMs;
+        if (t2 >= 1) turnAt = 0;
+        else { busy = true; yaw = yawFrom + (yawTo - yawFrom) * ease(t2); }
+      }
+
+      /* The bump is a shove along whatever the robot is facing, so it is a translation
+         in the robot's own frame — which is why it goes in as x and z here and not as a
+         screen direction. */
+      var shove = 0;
+      if (bumpAt) {
+        var bt = (now - bumpAt) / BUMP_MS;
+        if (bt >= 1) bumpAt = 0; else { busy = true; shove = Math.sin(bt * Math.PI) * 0.22; }
+      }
+      var hop = 0;
+      if (hopAt) {
+        var ht = (now - hopAt) / HOP_MS;
+        if (ht >= 1) hopAt = 0;
+        else { busy = true; hop = Math.abs(Math.sin(ht * Math.PI * 2)) * 7; }
+      }
+
+      var rad = yaw * Math.PI / 180;
+      var px = wx(gx) + Math.sin(rad) * shove * TILE;
+      var pz = wz(gy) - Math.cos(rad) * shove * TILE;
+
+      robotItem.x = px;
+      robotItem.z = pz;
+      robotItem.yaw = yaw;
+      robotItem.lift = dropLift + hop;
+      robotItem.alpha = dropAlpha;
+      shadowItem.x = px;
+      shadowItem.z = pz;
+      shadowItem.alpha = dropAlpha * (0.22 - hop * 0.012);
+
+      scene.draw(everything);
+      raf = busy ? window.requestAnimationFrame(frame) : 0;
+    }
+
+    function kick() { if (!raf) raf = window.requestAnimationFrame(frame); }
 
     var api = {
       grid: g,
@@ -132,48 +237,82 @@ var Board = (function () {
       },
 
       moveTo: function (x, y) {
-        place(robotEl, x, y);
+        from.x = pos.x; from.y = pos.y;
+        pos.x = x; pos.y = y;
+        moveMs = pace();
+        moveAt = performance.now();
+        kick();
       },
 
+      /* Degrees, and they accumulate: four right turns wind the robot a whole circle
+         rather than snapping back through zero. */
       turnTo: function (delta) {
         spin += delta * 90;
-        rovi.setYaw(spin);
+        yawFrom = yawTo;
+        yawTo = spin;
+        turnMs = pace();
+        turnAt = performance.now();
+        kick();
       },
 
       /* Nudge towards a wall and back: the robot bumps instead of walking into it. */
       bump: function () {
-        rovi.bump();
+        bumpAt = performance.now();
+        kick();
       },
 
       takeBattery: function (x, y) {
-        var b = batteryEls[x + ',' + y];
-        if (!b || b.classList.contains('is-taken')) return false;
-        b.classList.add('is-taken');
+        var hit = null;
+        batteryItems.forEach(function (b) {
+          if (b.gx === x && b.gy === y && !b.takenAt) hit = b;
+        });
+        if (!hit) return false;
+        hit.takenAt = performance.now();
+        kick();
         return true;
       },
 
       celebrate: function () {
-        goalEl.classList.add('is-reached');
-        rovi.hop();
+        goalItem.model = Models.flag(true);
+        hopAt = performance.now();
+        kick();
       },
 
       reset: function () {
         spin = ORDER.indexOf(level.dir) * 90;
-        rovi.setYaw(spin, true);            // back to the start facing, without turning
-        goalEl.classList.remove('is-reached');
-        place(robotEl, g.start.x, g.start.y);
-        Object.keys(batteryEls).forEach(function (k) { batteryEls[k].classList.remove('is-taken'); });
+        yawFrom = yawTo = spin;
+        turnAt = moveAt = bumpAt = hopAt = lastOrder = 0;
+        pos.x = from.x = g.start.x;
+        pos.y = from.y = g.start.y;
+        goalItem.model = Models.flag(false);
+        batteryItems.forEach(function (b) { b.takenAt = 0; b.alpha = 1; b.lift = 0; });
+        kick();
       },
 
-      /* Cells are sized in JS so the board always fits the space it was given,
-         whatever the level's proportions are. The robot is drawn into a canvas rather
-         than scaled by CSS, so it has to be told the new size to redraw at. */
+      /* The board is drawn rather than laid out, so fitting it is a matter of measuring
+         how big the world comes out at scale 1 and then choosing a scale. The room left
+         above is the robot's own height: it can be standing on the farthest square,
+         where its head reaches above the top edge of the ground. */
       fit: function () {
-        var box = el.parentNode.getBoundingClientRect();
-        var size = Math.floor(Math.min(box.width / g.cols, box.height / g.rows));
-        size = Math.max(28, Math.min(96, size));
-        el.style.setProperty('--cell', size + 'px');
-        rovi.resize(size);
+        var space = el.getBoundingClientRect();
+        if (!space.width || !space.height) return;
+        scene.resize(space.width, space.height);
+
+        var bounds = scene.measure(ground);
+        var pad = Models.ROVI_TOP * Voxel.COS_P;
+        var w = bounds.x1 - bounds.x0;
+        var h = (bounds.y1 - bounds.y0) + pad;
+        var s = Math.min(space.width / w, space.height / h) * 0.96;
+        // A cell between these two reads: smaller and the robot's face is lost, larger
+        // and a three by three level fills a whole classroom projector with grass.
+        s = clamp(s, 34 / TILE, 126 / TILE);
+
+        scene.view(
+          space.width / 2 - (bounds.x0 + bounds.x1) / 2 * s,
+          space.height / 2 - ((bounds.y0 - pad) + bounds.y1) / 2 * s,
+          s
+        );
+        kick();
       }
     };
 

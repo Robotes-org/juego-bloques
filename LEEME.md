@@ -14,10 +14,16 @@ El juego está dibujado como el concepto de **Rovi** (`assets/rovi-concept.png`)
 de cubos visto desde arriba, con pasto, piedra y un rover de cara celeste. Los bloques
 siguen con la forma de Scratch a propósito, porque es a donde pasan los niños después.
 
-**El robot es un modelo en 2.5D**: tiene volumen y gira de verdad sobre el tablero, así
-que cuando el niño pone un bloque de *girar* ve al robot dar la vuelta, no cambiar de
-dibujo. Cuando camina hacia arriba le ve la espalda, y por eso lleva una franja celeste
-en la cabeza que apunta siempre hacia donde va a avanzar.
+**Todo el tablero está en 2.5D**: es una isla de cubos vista en diagonal, con el pasto,
+los muros, las pilas, la bandera y el robot dibujados desde una sola cámara fija. El
+robot tiene volumen y gira de verdad, así que cuando el niño pone un bloque de *girar* ve
+al robot dar la vuelta, no cambiar de dibujo. Cuando camina alejándose le ve la espalda,
+y por eso lleva una franja celeste en la cabeza que apunta siempre hacia donde avanzará.
+
+Ojo con esto en la sala: con el tablero girado, el "norte" del mapa queda arriba y a la
+izquierda. Los bloques y las pistas hablan siempre desde el robot ("dobla a la derecha"),
+no desde la pantalla, que es lo que debería salvarlo — pero vale la pena mirar cómo les
+resulta la primera vez.
 
 ## Cómo abrirlo
 
