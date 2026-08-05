@@ -8,42 +8,6 @@ var Board = (function () {
   var DIRS = { N: { dx: 0, dy: -1, deg: 0 }, E: { dx: 1, dy: 0, deg: 90 }, S: { dx: 0, dy: 1, deg: 180 }, O: { dx: -1, dy: 0, deg: 270 } };
   var ORDER = ['N', 'E', 'S', 'O'];
 
-  /* Rovi, the rover of the concept art, seen from above. Every shape is a rectangle on a
-     four unit grid and nothing is rounded: that is the whole trick to drawing voxel, and
-     it survives being scaled down to a 28 pixel cell far better than curves do.
-
-     A rover seen from directly above would show the top of its head, not its face. This
-     one cheats and wears the screen flat, because the eyes and the antenna are how a
-     child reads which way the robot is about to walk — the same reason the antenna
-     points forward here and backwards in the concept. */
-  var ROBOT_SVG =
-    '<svg viewBox="0 0 64 64" class="robot-svg" aria-hidden="true">' +
-      '<rect class="robot-spark" x="28" y="0" width="8" height="6"/>' +
-      '<rect class="robot-spark-shade" x="28" y="6" width="8" height="2"/>' +
-      '<rect class="robot-antenna" x="30" y="8" width="4" height="6"/>' +
-      '<rect class="robot-wheel" x="0" y="16" width="10" height="14"/>' +
-      '<rect class="robot-wheel" x="54" y="16" width="10" height="14"/>' +
-      '<rect class="robot-wheel" x="0" y="36" width="10" height="14"/>' +
-      '<rect class="robot-wheel" x="54" y="36" width="10" height="14"/>' +
-      '<rect class="robot-hub" x="2" y="20" width="6" height="6"/>' +
-      '<rect class="robot-hub" x="56" y="20" width="6" height="6"/>' +
-      '<rect class="robot-hub" x="2" y="40" width="6" height="6"/>' +
-      '<rect class="robot-hub" x="56" y="40" width="6" height="6"/>' +
-      '<rect class="robot-shell" x="8" y="14" width="48" height="46"/>' +
-      '<rect class="robot-shade" x="48" y="14" width="8" height="46"/>' +
-      '<rect class="robot-shade" x="8" y="52" width="48" height="8"/>' +
-      '<rect class="robot-screen" x="16" y="18" width="32" height="22"/>' +
-      /* Two blocks and a bar. The concept draws the eyes as pixel arcs and the first
-         attempt copied them, but a cell can be as small as 28 pixels, and at that size
-         three pixels of arc per eye are three specks of noise. Solid eyes survive. */
-      '<rect class="robot-eye" x="20" y="23" width="8" height="9"/>' +
-      '<rect class="robot-eye" x="36" y="23" width="8" height="9"/>' +
-      '<rect class="robot-eye" x="26" y="34" width="12" height="3"/>' +
-      '<rect class="robot-hub" x="8" y="44" width="6" height="8"/>' +
-      '<rect class="robot-hub" x="50" y="44" width="6" height="8"/>' +
-      '<rect class="robot-panel" x="20" y="46" width="24" height="6"/>' +
-    '</svg>';
-
   /* A pennant cut in three steps rather than on the diagonal, planted in a block of
      dirt. Three steps and not six: finer stairs turn into a feather at cell size. */
   var GOAL_SVG =
@@ -137,13 +101,15 @@ var Board = (function () {
       batteryEls[b.x + ',' + b.y] = bEl;
     });
 
-    // The robot is two nested elements on purpose: the outer one walks (translate),
-    // the inner one turns (rotate). Keeping them apart lets the bump animation say
-    // "forward" as -Y in the inner element's own rotated frame, whatever the heading.
+    // The robot is still two nested elements, but the split means something different
+    // now that it is a model: the outer one walks the grid (translate), and the inner
+    // one holds the canvas Robot draws into. Turning, bumping and cheering all happen
+    // inside that canvas, in the model's own three dimensions — see src/robot.js.
     var robotEl = document.createElement('div');
     robotEl.className = 'sprite robot';
-    robotEl.innerHTML = '<div class="robot-inner">' + ROBOT_SVG + '</div>';
+    robotEl.innerHTML = '<div class="robot-inner"></div>';
     el.appendChild(robotEl);
+    var rovi = Robot.create(robotEl.firstChild);
 
     function place(sprite, x, y) {
       sprite.style.setProperty('--x', x);
@@ -171,14 +137,12 @@ var Board = (function () {
 
       turnTo: function (delta) {
         spin += delta * 90;
-        robotEl.style.setProperty('--spin', spin + 'deg');
+        rovi.setYaw(spin);
       },
 
       /* Nudge towards a wall and back: the robot bumps instead of walking into it. */
       bump: function () {
-        robotEl.classList.remove('is-bumping');
-        void robotEl.offsetWidth;           // restart the animation on a second crash
-        robotEl.classList.add('is-bumping');
+        rovi.bump();
       },
 
       takeBattery: function (x, y) {
@@ -190,25 +154,26 @@ var Board = (function () {
 
       celebrate: function () {
         goalEl.classList.add('is-reached');
-        robotEl.classList.add('is-happy');
+        rovi.hop();
       },
 
       reset: function () {
         spin = ORDER.indexOf(level.dir) * 90;
-        robotEl.style.setProperty('--spin', spin + 'deg');
-        robotEl.classList.remove('is-happy', 'is-bumping');
+        rovi.setYaw(spin, true);            // back to the start facing, without turning
         goalEl.classList.remove('is-reached');
         place(robotEl, g.start.x, g.start.y);
         Object.keys(batteryEls).forEach(function (k) { batteryEls[k].classList.remove('is-taken'); });
       },
 
       /* Cells are sized in JS so the board always fits the space it was given,
-         whatever the level's proportions are. */
+         whatever the level's proportions are. The robot is drawn into a canvas rather
+         than scaled by CSS, so it has to be told the new size to redraw at. */
       fit: function () {
         var box = el.parentNode.getBoundingClientRect();
         var size = Math.floor(Math.min(box.width / g.cols, box.height / g.rows));
         size = Math.max(28, Math.min(96, size));
         el.style.setProperty('--cell', size + 'px');
+        rovi.resize(size);
       }
     };
 

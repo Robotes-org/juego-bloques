@@ -35,6 +35,7 @@ python3 -m http.server 8000  # only if you want a server, not required
 - `styles.css` — all the styles.
 - `src/levels.js` — the twelve levels as ASCII maps. **Start here to change the game.**
 - `src/board.js` — parses a map, draws the grid, moves the robot.
+- `src/robot.js` — Rovi as a voxel model, rendered to a canvas. **Loads before `board.js`.**
 - `src/editor.js` — the palette and the block tree the child builds, including drag and drop.
 - `src/runner.js` — flattens the block tree into moves and plays them back.
 - `src/game.js` — glue: level navigation, progress, messages, win dialog.
@@ -180,12 +181,15 @@ would lie.
 The page is dressed as the concept sheet in `assets/rovi-concept.png`: a voxel world seen
 from above, navy chrome, a cream and cyan rover.
 
-- **The board stays top-down. It is not going isometric.** Every level map, the robot's
-  rotation, the bump animation and the drag-and-drop hit testing are written against a
-  square grid, and an isometric board rewrites all four for a change of camera angle.
-  Depth is faked the way a voxel game fakes it in a map view: **a lit top edge and a
-  shaded bottom edge on a flat face**, which is what `--face-lit` and `--face-dark` are
+- **The board stays top-down. It is not going isometric.** Every level map, the drag-and-
+  drop hit testing and the whole grid of tiles are written against a square seen from
+  directly above, and an isometric board rewrites all of them for a change of camera
+  angle. Depth is faked the way a voxel game fakes it in a map view: **a lit top edge and
+  a shaded bottom edge on a flat face**, which is what `--face-lit` and `--face-dark` are
   for. Every block on the page uses them — the tiles, the walls, the buttons, the pieces.
+- **The robot is the exception, and it is a real model** — see *The robot in 2.5D* below.
+  A character with volume standing on a flat map is the oldest trick in the genre; what
+  makes it work is the contact shadow, not the camera.
 - **Sprites are rectangles on a four unit grid inside a 64 unit box, and nothing is
   rounded.** That is the whole of the voxel look, and it survives being scaled down to a
   28 pixel cell far better than curves do.
@@ -193,10 +197,51 @@ from above, navy chrome, a cream and cyan rover.
   were first drawn as the concept's pixel arcs, three rectangles each, and on the board
   they were six specks of noise; they are solid blocks now. The flag was six steps and
   read as a feather; it is three. When in doubt, draw fewer and bigger shapes.
-- Rovi wears his face flat on top, which a real rover seen from above would not. The eyes
-  and the antenna are how a child reads which way the robot is about to walk, and that
-  beats being right about the camera. The antenna points forward for the same reason,
-  though the concept puts it behind.
+## The robot in 2.5D
+
+`src/robot.js` is a small voxel model of Rovi — twenty boxes — rendered to a canvas by
+hand under a fixed camera, and it replaces the flat sprite the robot used to be. Board.js
+owns the grid and the walking; the module owns everything that happens inside the square.
+
+**Why a model rather than four drawings, one per heading.** Turning is what this game
+teaches. A child presses *girar a la derecha* and has to see the robot turn — four
+drawings can only blink between headings, and the ninety degrees in between is the part
+that means something. It also pays for itself in light: the faces are shaded in world
+space, so a side that is bright walking north goes dark once the robot turns east.
+
+The whole renderer is short because every part is an axis-aligned box: six faces, a
+normal each, drawn back to front by the depth of each box's centre. No z-buffer, no
+per-face sorting, no WebGL. It still opens from a pendrive with a double click.
+
+Things worth knowing before changing it:
+
+- **The camera pitch is a compromise and not a free number.** Straight down is the old
+  flat sprite and shows no volume; low angles show a handsome robot that stops agreeing
+  with a board drawn from directly above. 52° keeps the tiles reading as squares and
+  still lets the face be seen.
+- **The model is narrower than the sprite was** (`UNIT`, about two thirds of a cell) and
+  its ground point sits *below* the middle of the square. A model with height grows
+  upwards from where it is planted, and planted dead centre it reads as standing a row
+  too far north.
+- **The contact shadow is not decoration.** It is the only thing tying a robot with
+  height to a flat square. Take it away and it floats.
+- **The cyan strip across the top of the head is there for the game, not for the look.**
+  It is not on the concept sheet. When the robot walks away from the camera its face is
+  hidden, and without a mark on a surface the camera can always see, there is no way to
+  tell which way it is about to go.
+- Colours are read off the `--rovi-*` tokens at startup and shaded arithmetically, so the
+  robot still follows the palette. The fallbacks in `INK` exist because a missing custom
+  property produces an unparseable `fillStyle`, which the canvas ignores *without an
+  error* — the robot would just quietly stop being drawn.
+- The bump and the celebration hop live in the model now, as a shove along whatever the
+  robot is facing and a jump straight up. `prefers-reduced-motion` is checked in JS,
+  because CSS cannot reach inside a canvas.
+- The animation loop runs only while something is moving and stops itself afterwards.
+
+The flag, the batteries and the walls are still flat. A model character on a drawn map is
+a deliberate convention, but if they are ever given volume too, they should be drawn by
+the same renderer and under the same camera rather than by hand — two cameras on one
+board is the one thing that would look broken.
 - The goal flag is cyan and the grass is green, which is not a free choice: a green flag
   on green ground disappears. Cyan is also the concept's own colour for something
   powered up, which is why it is on the flag, the eyes, the running block and the drop
@@ -214,10 +259,9 @@ from above, navy chrome, a cream and cyan rover.
     completely once the tiles land, so it is only ever seen during the build — and
     against green, tiles rise into a green square and the whole sweep is invisible.
   - The drop is animated on the sprite's **child**, never on `.sprite` itself, whose
-    transform is what places it on the grid. The robot needs its own keyframes on top of
-    that, because it has to keep its heading while it falls, and its `translateY` is
-    written before the `rotate` so it falls down the screen rather than down its own
-    rotated frame.
+    transform is what places it on the grid. That is also why the robot can share the
+    same keyframes as the flag and the batteries: its heading lives in the model, not in
+    a CSS `rotate` the drop would have to carry.
   The whole thing is off under `prefers-reduced-motion`, where `backwards` would
   otherwise hold every tile hidden waiting for a delay that no longer runs.
 
@@ -251,9 +295,10 @@ from above, navy chrome, a cream and cyan rover.
   against the *board's* width, not the sprite's, so `padding: 12%` on a battery was wider
   than a whole cell, collapsed its content box to zero and made every battery invisible
   while the model still counted them. Padding goes on the inner `<svg>`.
-- The robot is two nested elements: the outer one walks (`translate`), the inner one
-  turns (`rotate`). That is what lets the bump animation mean "forward" as `-Y` in the
-  robot's own rotated frame, whatever direction it is facing.
+- The robot is still two nested elements, but the split means something different now
+  that it is a model: the outer one walks the grid (`translate`), the inner one holds the
+  canvas. Turning, bumping and cheering all happen inside that canvas, in three
+  dimensions, so nothing about the heading is expressed in CSS any more.
 - The board floor is checkered in lightness, not in hue. An earlier version alternated
   Menta and Cielo, and two different colours read as two different terrains.
 - The program is redrawn from the block tree after every edit. Programs are tens of

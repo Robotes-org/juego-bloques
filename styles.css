@@ -842,53 +842,25 @@ h2, h3 {
 
 .robot { z-index: 3; transition: transform .3s ease-in-out; }
 
-.robot-inner {
-  width: 100%;
-  height: 100%;
-  transform: rotate(var(--spin, 0deg));
-  transition: transform .3s ease-in-out;
-  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, .35));
-  animation-name: robot-drop;
+.robot-inner { width: 100%; height: 100%; }
+
+/* The robot is the one thing on the board with height, so it is drawn into a canvas
+   that is wider than the square it stands on and overflows it — see src/robot.js. The
+   canvas is centred on the cell and the model's own ground point is offset inside it,
+   which is what decides where the robot appears to be standing. Nothing here rotates:
+   turning happens in the model, under a fixed camera. */
+.robot-canvas {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 
-/* The robot falls with the others but has to keep the heading it starts the level with,
-   so it needs its own keyframes. The translate is written before the rotate on purpose:
-   that way it falls straight down the screen instead of down the robot's own rotated
-   frame, which is what -Y means everywhere else in this file. */
-@keyframes robot-drop {
-  from { transform: translateY(-55%) rotate(var(--spin, 0deg)); opacity: 0; }
-  60% { opacity: 1; }
-  to { transform: rotate(var(--spin, 0deg)); opacity: 1; }
-}
-
-/* Rovi from above: the cream shell, the dark screen it wears its face on, four black
-   wheels with amber hubs, and the cyan antenna cube pointing the way it will walk. */
-.robot-svg { padding: 2%; }
-.robot-shell { fill: var(--rovi-hueso); }
-.robot-shade { fill: var(--rovi-hueso-sombra); }
-.robot-screen { fill: var(--rovi-tinta); }
-.robot-eye { fill: var(--rovi-cian); }
-.robot-panel { fill: var(--rovi-agua-claro); }
-.robot-wheel { fill: var(--rovi-noche); }
-.robot-hub { fill: var(--game-spark); }
-.robot-spark { fill: var(--rovi-cian); }
-.robot-spark-shade { fill: var(--rovi-agua); }
-.robot-antenna { fill: var(--rovi-noche); }
-
-/* -Y in the robot's own rotated frame is always "forward", whatever the heading. */
-@keyframes robot-bump {
-  0%, 100% { transform: rotate(var(--spin, 0deg)) translateY(0); }
-  45% { transform: rotate(var(--spin, 0deg)) translateY(-22%); }
-}
-
-.robot.is-bumping .robot-inner { animation: robot-bump .38s ease-out; }
-
-@keyframes robot-cheer {
-  0%, 100% { transform: rotate(var(--spin, 0deg)) scale(1); }
-  40% { transform: rotate(var(--spin, 0deg)) scale(1.16); }
-}
-
-.robot.is-happy .robot-inner { animation: robot-cheer .5s ease-in-out 2; }
+/* The colours the model is painted in are read straight off these tokens by robot.js
+   and shaded per face there, so the robot has no fill rules of its own any more. The
+   bump and the cheer moved into the model too: both are movements in three dimensions
+   now — a shove along whatever the robot is facing, and a hop straight up. */
 
 /* The flag is cyan, not green: it stands on grass, and the concept's own beacon is the
    same cyan as Rovi's eyes. It turns amber once it is reached, because yellow is the
@@ -1073,13 +1045,13 @@ h2, h3 {
   .board-wrap { min-height: 16rem; }
 }
 
+/* robot.js checks this query itself and stops turning, bumping and hopping — CSS cannot
+   reach inside a canvas. */
 @media (prefers-reduced-motion: reduce) {
-  .robot, .robot-inner, .battery, .pip-slot { transition-duration: .01ms; }
+  .robot, .battery, .pip-slot { transition-duration: .01ms; }
   /* The level has to be on screen at once, not built: `backwards` would otherwise hold
      every tile and every sprite hidden until a delay that no longer runs. */
   .cell, .sprite > *,
-  .robot.is-bumping .robot-inner,
-  .robot.is-happy .robot-inner,
   .block.is-running { animation: none; }
   .block.is-running { filter: drop-shadow(0 0 4px var(--rovi-cian)); }
 }
