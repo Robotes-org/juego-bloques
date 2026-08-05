@@ -141,7 +141,9 @@
     var level = LEVELS[index];
 
     board = Board.create(el.board, level);
-    Editor.setLevel(level);
+    // A level that has been solved opens with the program that solved it, so a child —
+    // or whoever is looking over their shoulder — can read back what they did.
+    Editor.setLevel(level, (progress[index] || {}).program);
     Editor.setLocked(false);
 
     el.title.textContent = (index + 1) + '. ' + level.name;
@@ -250,7 +252,14 @@
   function win(info) {
     var stars = info.collected;
     var best = progress[current] || { done: false, stars: 0 };
-    progress[current] = { done: true, stars: Math.max(best.stars, stars) };
+    /* The program is kept alongside the stars and follows the same rule: what is stored
+       is the best run, not the last one. Saving the last would leave a level badged with
+       three stars next to a one-star program, and the badge is what a child trusts. */
+    progress[current] = {
+      done: true,
+      stars: Math.max(best.stars, stars),
+      program: stars >= best.stars ? Editor.snapshot() : best.program
+    };
     save();
     renderNav();
     setStatus('¡El robot llegó a la bandera!', 'win');

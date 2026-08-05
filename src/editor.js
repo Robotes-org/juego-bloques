@@ -47,6 +47,37 @@ var Editor = (function () {
     return node;
   }
 
+  /* ---------- saving and restoring ---------- */
+
+  function strip(list) {
+    return list.map(function (node) {
+      var out = { type: node.type };
+      if (node.body) { out.times = node.times; out.body = strip(node.body); }
+      return out;
+    });
+  }
+
+  /* The inverse, and deliberately suspicious of what it is given: unknown block types,
+     blocks this level does not offer, a `repetir` count out of range or a body on a block
+     that cannot hold one are all thrown away rather than trusted. */
+  function rebuild(list, allowed) {
+    if (!Array.isArray(list)) return [];
+    var out = [];
+    list.forEach(function (raw) {
+      if (!raw || typeof raw.type !== 'string') return;
+      var def = DEFS[raw.type];
+      if (!def || allowed.indexOf(raw.type) === -1) return;
+      var node = makeNode(raw.type);
+      if (node.body) {
+        node.body = rebuild(raw.body || [], allowed);
+        var times = Math.round(Number(raw.times));
+        if (times >= MIN_TIMES && times <= MAX_TIMES) node.times = times;
+      }
+      out.push(node);
+    });
+    return out;
+  }
+
   function countBlocks(list) {
     var n = 0;
     list.forEach(function (node) {
@@ -369,12 +400,21 @@ var Editor = (function () {
       document.addEventListener('pointercancel', onPointerUp);
     },
 
-    setLevel: function (level) {
-      program = [];
+    /* `saved` is a snapshot from a previous session, and it is rebuilt rather than
+       adopted: it arrives from localStorage, where anything at all can be sitting, so
+       every node is checked against the level's own palette before it is put back. A
+       program that does not survive that check is dropped quietly — a child opening a
+       level they solved last week should never be shown an error about storage. */
+    setLevel: function (level, saved) {
       limit = level.max || 0;
+      program = saved ? rebuild(saved, level.blocks) : [];
       renderPalette(level.blocks);
       render();
     },
+
+    /* The program as plain data, without the ids, which are handed out fresh every time
+       it is rebuilt and mean nothing outside this session. */
+    snapshot: function () { return strip(program); },
 
     clear: function () {
       if (locked) return;

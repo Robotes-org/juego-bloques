@@ -62,6 +62,23 @@ mandatory again — that was the first design and it turned every level into pas
 at the top of `src/game.js` is `true`. Setting it back to `false` restores unlocking each
 level with the previous one — the code for that path is still there and still works.
 
+**A finished level keeps the program that finished it**, under the same key as the rest
+of the progress, and opens with it back in the panel so a child can read what they did.
+Two things about it:
+
+- What is stored is the **best** run and not the last one, the same rule the stars follow.
+  Saving the last would leave a level badged with three stars sitting next to a one-star
+  program, and the badge is what a child trusts.
+- What comes back out of storage is rebuilt and checked, never adopted: unknown block
+  types, blocks the level does not offer, a `repetir` count out of range and a body on a
+  block that cannot hold one are all dropped. It is a file on a shared school laptop, and
+  a program that does not survive the check is discarded quietly — nobody should be shown
+  an error about storage for opening a level.
+
+The trade-off is worth knowing before a class: the notebooks are shared, so the next child
+to open a solved level finds the previous child's solution waiting. The stars already gave
+away that somebody had been there; a whole program gives away how.
+
 Stars are only ever the batteries collected. There is no block-count par: counting blocks
 is an adult's idea of elegance, and *"you used 7, it can be done in 5"* means far less to
 an eight year old than a battery they can see sitting in a corner of the map.
