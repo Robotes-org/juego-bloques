@@ -1,16 +1,28 @@
 /* Ruta Robot — all the styles for the game.
-   Colours come from assets/tokens.css. No hex values live here: a colour that is
-   missing is added to ~/marca/assets/tokens.css first and copied over.
 
-   This page uses the "tintas de taller" family (`~/marca/manual/03-color.md` §3.7),
-   the pastel side of the brand reserved for material aimed at the children. The rule
-   that comes with it: text on those tints is always Pizarra, never white — they are
-   light, and white on them does not clear 2.5:1.
+   This is the "Rovi" concept skin (`assets/rovi concept.png`): a voxel world seen from
+   above, dark navy chrome, cream and cyan robot, grass and stone blocks. The board keeps
+   its top-down grid — an isometric board would break the robot's rotation, the drag and
+   drop and every level map — so depth is faked the way a voxel game fakes it in a map
+   view: a light top edge and a dark bottom edge on every block.
 
-   The page is pinned light on purpose. It is projected and played in a classroom, and a
-   child's laptop set to dark mode should not repaint the board (same reason as
-   `website`, §3.6). That is why this file aliases the raw tokens instead of the semantic
-   --rb-fondo / --rb-texto roles, which flip with prefers-color-scheme. */
+   COLOURS ARE THE ONE PLACE THIS BRANCH BREAKS THE HOUSE RULE. The rest of the repo
+   resolves every colour through the `--rb-*` tokens copied from ~/marca. The concept
+   arrives with its own palette, sampled from the artwork below, and it is not brand
+   material yet — so it lives here as `--rovi-*` instead of being written into the manual
+   on the strength of one image. If the concept is adopted, these eight swatches move to
+   ~/marca/assets/tokens.css as their own family and this block turns back into aliases.
+
+   Every pair below was measured; the ones that matter:
+     hueso on noche 8.66:1 · blanco on pizarra 11.8:1 · noche on sol 6.33:1
+     noche on agua-claro 5.38:1 · noche on pasto 4.38:1 · cian on noche 8.88:1
+   The raw concept blue (#2f91b6) only reaches 3.52:1 under the block text, which is why
+   the blocks are painted in its lighter face and outlined in the raw one.
+
+   The page has one fixed appearance and does not follow prefers-color-scheme. It is
+   played on a room full of laptops and projected at the front, and a child whose machine
+   is in dark mode must see the same board as everyone else. That is why nothing here
+   uses the semantic --rb-fondo / --rb-texto roles, which flip. */
 
 /* Nunito, self-hosted: rounded and made for children's reading, and the closest thing
    to how a Scratch block feels. It is a variable font, so this one 39 KB file covers
@@ -30,35 +42,103 @@
     U+FEFF, U+FFFD;
 }
 
+/* Silkscreen, the concept's pixel type — it is all but the specimen printed on the
+   concept sheet. It is for names and labels only: titles, buttons, level numbers, the
+   counter. Sentences a child has to read stay in Nunito, because the concept sets its
+   own body copy in a rounded sans for the same reason and a pixel font costs an eight
+   year old real reading speed over a full line.
+
+   Chosen over Pixelify Sans, which was tried first and looks closer to the concept's
+   title lettering, for one reason: its 5 is shaped like an S and its 7 like a 1. The
+   numbers on this page are the level a child is asked to open and the count inside a
+   `repetir`, and neither can be a guess. Silkscreen's lowercase is small caps, so
+   everything set in it comes out in capitals — which is what the concept does anyway.
+
+   Same latin subset treatment as Nunito, 7 KB, same offline reason. */
+@font-face {
+  font-family: 'Silkscreen';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('assets/fonts/silkscreen-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
 :root {
-  /* Blocks only. The rest of the page keeps the brand's own type stack. */
+  /* The eight swatches of the concept's "paleta de colores", sampled from the sheet. */
+  --rovi-hueso: #e2d4bb;      /* the robot's shell */
+  --rovi-piedra: #878782;     /* stone */
+  --rovi-noche: #233542;      /* the darkest navy — the page itself */
+  --rovi-pizarra: #263a48;    /* the navy the panels are cut from */
+  --rovi-agua: #2f91b6;       /* the concept blue */
+  --rovi-sol: #efab17;        /* amber: batteries, stars, rewards */
+  --rovi-tierra: #a36a29;     /* dirt */
+  --rovi-pasto: #75a63b;      /* grass */
+
+  /* Read off the artwork rather than the swatch row: the sky behind the world, the cyan
+     of Rovi's eyes and antenna, and the lighter face of each voxel block. */
+  --rovi-cielo: #4789c1;
+  --rovi-cian: #54ecf8;
+  --rovi-agua-claro: #58b4d8;
+  --rovi-pasto-claro: #8cbf4c;
+  /* The concept has no orange between its amber and its brown, and `repetir` needs one:
+     painting it in the amber would make the loop block the same colour as a battery, a
+     star and a finished level, and yellow on this page means reward. Mixed rather than
+     invented, so it stays inside the palette. Pizarra on it measures 4.74:1. */
+  --rovi-naranja: color-mix(in srgb, var(--rovi-sol) 62%, var(--rovi-tierra));
+  --rovi-hueso-sombra: #c3b394;
+  --rovi-tinta: #16232c;      /* the screen Rovi's face is drawn on */
+  --rovi-borde: #3c5b70;      /* the lit edge of a navy panel */
+  --rovi-humo: #b9c6d1;       /* secondary text on navy — 6.77:1 */
+
   --game-font-block: 'Nunito', var(--rb-font-titulo);
+  --game-font-pixel: 'Silkscreen', var(--rb-font-titulo);
 
-  --game-ink: var(--rb-pizarra);
-  --game-ink-soft: var(--rb-pizarra-alta);
-  --game-muted: var(--rb-grafito);
+  --game-ink: var(--rovi-noche);        /* text that sits on a light or coloured face */
+  --game-paper: var(--rovi-hueso);      /* text that sits on navy */
+  --game-muted: var(--rovi-humo);
 
-  --game-page: var(--rb-nube);
-  --game-surface: var(--rb-blanco);
-  --game-line: var(--rb-niebla);
-  --game-chrome: var(--rb-azul-taller);
+  --game-page: var(--rovi-noche);
+  --game-surface: var(--rovi-pizarra);
+  --game-well: #1c2c37;                 /* pizarra pushed further down, for inner wells */
+  --game-line: var(--rovi-borde);
+  --game-chrome: var(--rovi-noche);
+  --game-chip: #32536a;
 
-  --game-move: var(--rb-azul-juego);      /* movement blocks */
-  --game-loop: var(--rb-naranja-juego);   /* repeat blocks */
+  --game-move: var(--rovi-agua-claro);  /* movement blocks */
+  --game-loop: var(--rovi-naranja);     /* repeat blocks */
 
-  /* Each piece is outlined in its own colour taken down towards Pizarra. Derived with
-     color-mix instead of two more hand-written hex values, so the outline follows the
-     block colour if the tokens ever change. A browser too old for color-mix simply
-     draws no outline, which is a fine thing to lose. */
-  --edge-move: color-mix(in srgb, var(--rb-azul-juego) 68%, var(--rb-pizarra));
-  --edge-loop: color-mix(in srgb, var(--rb-naranja-juego) 68%, var(--rb-pizarra));
-  --game-wall: var(--rb-piedra);
-  --game-floor: var(--rb-menta);
-  --game-spark: var(--rb-amarillo-chispa);
-  --game-go: var(--rb-verde-bosque);
+  /* Each piece is outlined in its own colour taken down towards the navy. Derived with
+     color-mix instead of two more hand-written values, so the outline follows the block
+     colour. A browser too old for color-mix simply draws no outline, which is a fine
+     thing to lose. */
+  --edge-move: color-mix(in srgb, var(--rovi-agua) 76%, var(--rovi-noche));
+  --edge-loop: color-mix(in srgb, var(--rovi-naranja) 70%, var(--rovi-noche));
+
+  --game-wall: var(--rovi-piedra);
+  --game-floor: var(--rovi-pasto);
+  --game-spark: var(--rovi-sol);
+  --game-go: var(--rovi-pasto);
+
+  /* Opening a level builds its world: one tile at a time, then everything on top drops
+     in together. `--tile-step` is how long a tile waits for its turn and `--tile-rise`
+     how long it then takes to land, so the build lasts one step per tile plus one rise.
+     At these two the biggest level, seven by seven, is finished inside 1.3 seconds —
+     the intro plays on every level a child opens, and it cannot be something they learn
+     to sit through. */
+  --tile-step: 12ms;
+  --tile-rise: .26s;
 
   --game-topbar: 3.5rem;
-  --game-shadow: 0 1px 2px rgba(18, 24, 29, .1), 0 6px 18px rgba(18, 24, 29, .07);
+  --game-shadow: 0 2px 0 rgba(0, 0, 0, .22), 0 10px 24px rgba(0, 0, 0, .28);
+
+  /* A voxel block is drawn, not modelled: a lit top edge and a shaded bottom edge on a
+     flat face is all it takes to read as a cube from above. Every block on this page
+     uses these two, at whatever depth suits its size. */
+  --face-lit: rgba(255, 255, 255, .22);
+  --face-dark: rgba(0, 0, 0, .26);
 
   /* Puzzle-piece geometry. `notch-top` and `notch-bottom` are the left edge of the
      bump; they differ only on a `repetir` head, whose bump has to line up with the
@@ -81,11 +161,18 @@
 
 html, body { height: 100%; margin: 0; }
 
+/* The page is the night side of the concept sheet: navy, with the faintest voxel grid
+   ruled over it so the background reads as a world made of cubes rather than as a dark
+   screen. */
 body {
   display: flex;
   flex-direction: column;
-  background: var(--game-page);
-  color: var(--game-ink);
+  background-color: var(--game-page);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .022) 1px, transparent 1px);
+  background-size: 2rem 2rem, 2rem 2rem;
+  color: var(--game-paper);
   font-family: var(--rb-font-texto);
   font-size: var(--rb-text-base);
   line-height: var(--rb-leading-texto);
@@ -108,7 +195,8 @@ h2, h3 {
   gap: var(--rb-space-3);
   padding: 0 var(--rb-space-3);
   background: var(--game-chrome);
-  color: var(--rb-blanco);
+  border-bottom: 3px solid var(--rovi-borde);
+  color: var(--game-paper);
 }
 
 .brand { display: flex; align-items: center; gap: var(--rb-space-1); }
@@ -116,38 +204,49 @@ h2, h3 {
 .brand-mark {
   width: 2rem;
   height: 2rem;
-  /* The plate sits on Azul Taller, where the brand's own Pizarra would go muddy. */
-  --game-ink: var(--rb-pizarra);
-  --game-paper: var(--rb-blanco);
+  --game-ink: var(--rovi-tinta);
+  --game-paper: var(--rovi-cian);
 }
 
 .brand-name {
-  font-family: var(--rb-font-titulo);
-  font-size: var(--rb-text-lg);
+  font-family: var(--game-font-pixel);
+  font-size: var(--rb-text-xl);
   font-weight: 700;
-  letter-spacing: -.01em;
+  letter-spacing: .02em;
+  color: var(--rb-blanco);
 }
 
 .levels { display: flex; flex-wrap: wrap; gap: .375rem; margin-left: auto; }
 
+/* Every button on this page is a little block: flat face, lit top, and a hard edge
+   underneath that it sinks into when pressed. No blur — a voxel has no soft shadow.
+
+   The number is in Nunito and not in the pixel face, and that is the rule for the whole
+   page: SILKSCREEN NEVER SETS A DIGIT THE CHILD HAS TO ACT ON. Its 4 has an open top
+   that reads as a blob and its 5 reads as an S. "Abre el nivel 4" has to be the same 4
+   the child sees. The same applies to the count inside a `repetir` and to the block
+   counter; in a level's own name the number is incidental, so the chip keeps its pixel
+   type. */
 .level-btn {
   width: 2rem;
   height: 2rem;
   border: 0;
-  border-radius: var(--rb-radio-sm);
-  background: rgba(255, 255, 255, .18);
+  border-radius: 5px;
+  background: var(--game-chip);
+  box-shadow: inset 0 2px 0 var(--face-lit), 0 3px 0 rgba(0, 0, 0, .35);
   color: var(--rb-blanco);
-  font-family: var(--rb-font-titulo);
-  font-size: var(--rb-text-sm);
-  font-weight: 700;
+  font-family: var(--game-font-block);
+  font-size: var(--rb-text-base);
+  font-weight: 800;
   cursor: pointer;
 }
 
-.level-btn:hover:not(:disabled) { background: rgba(255, 255, 255, .34); }
-.level-btn.is-done { background: var(--rb-blanco); color: var(--game-chrome); }
+.level-btn:hover:not(:disabled) { filter: brightness(1.2); }
+.level-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: inset 0 2px 0 var(--face-lit), 0 1px 0 rgba(0, 0, 0, .35); }
+.level-btn.is-done { background: var(--rovi-agua); color: var(--rb-blanco); }
 /* Yellow means reward, so it belongs to the levels finished with all three batteries. */
 .level-btn.is-perfect { background: var(--game-spark); color: var(--game-ink); }
-.level-btn.is-current { outline: 3px solid var(--rb-blanco); outline-offset: 2px; }
+.level-btn.is-current { outline: 3px solid var(--rovi-cian); outline-offset: 2px; }
 .level-btn.is-locked { opacity: .35; cursor: not-allowed; }
 
 /* ---------- layout ---------- */
@@ -167,9 +266,10 @@ h2, h3 {
   flex-direction: column;
   gap: var(--rb-space-1);
   background: var(--game-surface);
-  border-radius: var(--rb-radio);
+  border: 2px solid var(--game-line);
+  border-radius: 14px;
   padding: var(--rb-space-2);
-  box-shadow: var(--game-shadow);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .07), var(--game-shadow);
 }
 
 .panel-title {
@@ -179,11 +279,29 @@ h2, h3 {
   font-size: var(--rb-text-lg);
 }
 
+/* The concept labels every panel with a small plate sitting on it. Here it is a rounded
+   navy tile, one shade up from the panel, with the name in pixel type. It never wraps:
+   a two-line plate stops looking like a label. */
+.chip {
+  white-space: nowrap;
+  padding: .25rem .7rem .3rem;
+  border-radius: 8px;
+  background: var(--game-chip);
+  box-shadow: inset 0 2px 0 var(--face-lit), 0 2px 0 rgba(0, 0, 0, .3);
+  color: var(--rb-blanco);
+  font-family: var(--game-font-pixel);
+  font-size: var(--rb-text-base);
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
 .counter {
   margin-left: auto;
-  font-family: var(--rb-font-texto);
+  white-space: nowrap;
+  font-family: var(--game-font-block);   /* it counts blocks: see .level-btn */
   font-size: var(--rb-text-sm);
-  font-weight: 400;
+  font-weight: 700;
   color: var(--game-muted);
 }
 
@@ -199,21 +317,30 @@ h2, h3 {
   height: 2rem;
   display: grid;
   place-items: center;
-  border-radius: 50%;
-  background: var(--game-page);
+  border-radius: 6px;
+  background: var(--game-well);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, .4);
   transition: background .25s ease, transform .25s ease;
 }
 
+/* The empty pip is a pale grey battery, not a dimmed yellow one: on a dark socket a
+   faded icon disappears altogether, and the whole point of the three sockets is that a
+   child can see from across the room how many are still out there. */
 .pip-slot .pip {
   width: 1.5rem;
   height: 1.5rem;
   display: block;
-  opacity: .45;
-  filter: grayscale(1);
+  opacity: .8;
+  filter: grayscale(1) brightness(1.7);
   transition: opacity .25s ease, filter .25s ease;
 }
 
-.pip-slot.is-on { background: var(--rb-crema); transform: scale(1.06); }
+.pip-slot.is-on {
+  background: color-mix(in srgb, var(--game-spark) 24%, var(--game-well));
+  box-shadow: inset 0 2px 0 var(--face-lit), 0 0 10px rgba(239, 171, 23, .45);
+  transform: scale(1.06);
+}
+
 .pip-slot.is-on .pip { opacity: 1; filter: none; }
 
 /* ---------- blocks ---------- */
@@ -228,6 +355,10 @@ h2, h3 {
    so a stack reads as pieces that click together the way Scratch does. The bump lives
    inside the box (that is what the extra bottom padding is for) and the negative
    bottom margin pulls the next block up until its notch swallows it.
+
+   The concept is voxel and these are not, on purpose: the children move on to Scratch
+   after this workshop, and the shape and the two family colours are what they carry
+   over. The skin changes around them.
 
    The shape and its colour live on the `.piece` layers behind the text, not on the block
    itself. A `border` cannot work here — clip-path cuts it off along with everything else
@@ -271,10 +402,18 @@ h2, h3 {
     drop-shadow(0 -1.5px 0 var(--piece-edge));
 }
 
+/* The lit top and shaded bottom that every other block on the page has. It is a
+   gradient rather than two insets because clip-path would cut an inset shadow off at
+   the silhouette's straight bounding box. */
 .piece-face {
   position: absolute;
   inset: 0;
-  background: var(--piece-color);
+  background:
+    linear-gradient(
+      var(--face-lit) 0 3px,
+      transparent 3px calc(100% - var(--notch-h) - 4px),
+      var(--face-dark) calc(100% - var(--notch-h) - 4px) 100%),
+    var(--piece-color);
 }
 
 /* The head and the foot are two ends of one C, so neither draws the edge that faces the
@@ -291,6 +430,20 @@ h2, h3 {
     drop-shadow(1.5px 0 0 var(--piece-edge))
     drop-shadow(-1.5px 0 0 var(--piece-edge))
     drop-shadow(0 1.5px 0 var(--piece-edge));
+}
+
+/* The head is the top of the C, so it keeps the lit edge and drops the shaded one; the
+   foot is the bottom and does the opposite. */
+.block-head > .piece > .piece-face {
+  background: linear-gradient(var(--face-lit) 0 3px, transparent 3px) var(--piece-color);
+}
+
+.block-foot > .piece > .piece-face {
+  background:
+    linear-gradient(
+      transparent 0 calc(100% - var(--notch-h) - 4px),
+      var(--face-dark) calc(100% - var(--notch-h) - 4px) 100%)
+    var(--piece-color);
 }
 
 .block > .piece > .piece-face {
@@ -357,7 +510,7 @@ h2, h3 {
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: rgba(18, 24, 29, .16);
+  background: rgba(18, 24, 29, .22);
   color: inherit;
   font-size: var(--rb-text-sm);
   font-weight: 700;
@@ -368,7 +521,7 @@ h2, h3 {
 
 .block:hover > .block-remove,
 .block:hover > .block-head > .block-remove { opacity: 1; }
-.block-remove:hover { background: rgba(18, 24, 29, .3); }
+.block-remove:hover { background: rgba(18, 24, 29, .38); }
 
 /* `repeat` is drawn as a head, an indented body and a foot — the C shape of Scratch.
    The head's bump is pushed right so it lands over the blocks nested inside. */
@@ -474,8 +627,8 @@ h2, h3 {
   align-items: center;
   gap: .25rem;
   padding: .125rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, .5);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .42);
 }
 
 .times-btn {
@@ -483,8 +636,8 @@ h2, h3 {
   height: 1.375rem;
   padding: 0;
   border: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, .75);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, .8);
   color: var(--game-ink);
   font-size: var(--rb-text-base);
   font-weight: 700;
@@ -497,9 +650,9 @@ h2, h3 {
 .times-value {
   min-width: 1.25rem;
   text-align: center;
-  font-family: var(--rb-font-mono);
-  font-size: var(--rb-text-base);
-  font-weight: 700;
+  font-family: var(--game-font-block);   /* a digit the child sets: see .level-btn */
+  font-size: var(--rb-text-lg);
+  font-weight: 800;
 }
 
 /* ---------- program ---------- */
@@ -511,18 +664,24 @@ h2, h3 {
   display: flex;
   flex-direction: column;
   padding: .5rem .5rem calc(.5rem + var(--notch-h));
-  border-radius: var(--rb-radio);
-  background: var(--game-page);
+  border-radius: 10px;
+  background: var(--game-well);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, .4);
 }
 
 .program.is-locked, .palette.is-locked { opacity: .8; pointer-events: none; }
 .block.is-dragging { opacity: .3; }
 
 /* clip-path cuts off outlines and box-shadows, so the running piece is marked with a
-   drop-shadow halo, which follows the silhouette instead of the box. */
+   drop-shadow halo, which follows the silhouette instead of the box.
+
+   The halo is cyan and not the yellow it used to be: a `repetir` block is amber-orange,
+   and a yellow glow around it is a yellow glow around yellow — invisible on exactly the
+   block a child most needs to watch. Cyan is the concept's own colour for something
+   powered up, and it carries over both block families. */
 @keyframes piece-glow {
-  0%, 100% { filter: drop-shadow(0 0 2px var(--game-spark)) drop-shadow(0 0 5px var(--game-spark)); }
-  50% { filter: drop-shadow(0 0 3px var(--game-spark)) drop-shadow(0 0 10px var(--game-spark)) brightness(1.08); }
+  0%, 100% { filter: drop-shadow(0 0 2px var(--rovi-cian)) drop-shadow(0 0 5px var(--rovi-cian)); }
+  50% { filter: drop-shadow(0 0 3px var(--rovi-cian)) drop-shadow(0 0 10px var(--rovi-cian)) brightness(1.08); }
 }
 
 .block.is-running { animation: piece-glow .9s ease-in-out infinite; }
@@ -534,7 +693,7 @@ h2, h3 {
   width: 11rem;
   margin: 0;
   transform: translate(-50%, -50%) rotate(-3deg);
-  filter: drop-shadow(0 6px 10px rgba(18, 24, 29, .3));
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .5));
   pointer-events: none;
   opacity: .95;
 }
@@ -545,28 +704,53 @@ h2, h3 {
   height: 6px;
   margin: -3px 0;
   border-radius: 3px;
-  background: var(--game-ink);
+  background: var(--rovi-cian);
 }
 
 /* ---------- board ---------- */
 
 .board-panel { gap: var(--rb-space-2); }
 
+/* The world sits under the concept's sky, with four voxel clouds ruled into it. Each
+   cloud is a flat `linear-gradient` layer — a hard-edged rectangle, because a blurred
+   radial one would be the only soft thing on the page. */
 .board-wrap {
   flex: 1;
   min-height: 0;
   display: grid;
   place-items: center;
+  padding: var(--rb-space-2);
+  border-radius: 10px;
+  background-color: var(--rovi-cielo);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .55) 0 0),   /* cloud 1, lower slab */
+    linear-gradient(rgba(255, 255, 255, .55) 0 0),   /* cloud 1, upper slab */
+    linear-gradient(rgba(255, 255, 255, .4) 0 0),    /* cloud 2 */
+    linear-gradient(rgba(255, 255, 255, .4) 0 0),
+    linear-gradient(rgba(255, 255, 255, .32) 0 0),   /* cloud 3, the far one */
+    linear-gradient(180deg, rgba(255, 255, 255, .28), transparent 55%);
+  background-repeat: no-repeat;
+  background-size: 72px 16px, 40px 16px, 56px 14px, 32px 14px, 44px 12px, 100% 100%;
+  background-position: 9% 22%, 13% 13%, 82% 30%, 86% 20%, 47% 9%, 0 0;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, .3);
 }
 
+/* A slab of world: the grid of blocks, with a dark rim and a hard edge under it so the
+   whole board reads as one thick piece of ground sitting in the sky. */
 .board {
   position: relative;
   --cell: 3rem;
   width: calc(var(--cell) * var(--cols));
   height: calc(var(--cell) * var(--rows));
   padding: 0;
-  border-radius: var(--rb-radio);
-  background: var(--game-floor);
+  border: 3px solid var(--rovi-tinta);
+  border-radius: 4px;
+  /* Not the grass colour, on purpose. The tiles cover this completely once they have
+     landed, so it is only ever seen while the level is building itself — and against
+     green the tiles rise into a green square and the sweep is invisible. A shadow is
+     what a plot of ground with nothing on it should look like. */
+  background: rgba(0, 0, 0, .18);
+  box-shadow: 0 6px 0 rgba(0, 0, 0, .3), 0 14px 26px rgba(0, 0, 0, .35);
 }
 
 .floor {
@@ -578,15 +762,45 @@ h2, h3 {
 }
 
 /* One floor colour, checkered only in lightness. Two different hues read as two
-   different terrains, and a child asks whether the blue squares are water. */
-.cell { border: 1px solid rgba(255, 255, 255, .5); }
-.cell-alt { background: rgba(255, 255, 255, .45); }
+   different terrains, and a child asks whether the blue squares are water. Each square
+   is a grass block seen from above: lit on its top edge, shaded on its bottom one. */
+.cell {
+  background: var(--game-floor);
+  box-shadow:
+    inset 0 3px 0 rgba(255, 255, 255, .16),
+    inset 0 -3px 0 rgba(0, 0, 0, .14),
+    inset 0 0 0 1px rgba(0, 0, 0, .07);
+  /* `backwards` is what keeps a tile invisible until its turn comes: without it every
+     tile is drawn in place first and the sweep only starts afterwards. */
+  animation: tile-rise var(--tile-rise) ease-out backwards;
+  animation-delay: calc(var(--i, 0) * var(--tile-step));
+}
 
-/* Rounded walls read as building blocks rather than as holes in the floor. */
+/* Rising and not falling: the ground comes up out of the sky it is floating in. The
+   travel is short because `.floor` clips at its own edge, and a tile that starts far
+   below its square would be cut in half on the way up. */
+@keyframes tile-rise {
+  from { transform: translateY(12px) scale(.92); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.cell-alt { background: var(--rovi-pasto-claro); }
+
+/* Walls are stone cubes, not holes: square-cornered, lit hard on top and cut dark
+   underneath, so they stand above the grass instead of sinking into it. */
 .cell-wall {
   background: var(--game-wall);
-  border: 2px solid var(--game-floor);
-  border-radius: 6px;
+  background-image:
+    linear-gradient(135deg, rgba(255, 255, 255, .1) 25%, transparent 25%, transparent 50%,
+      rgba(255, 255, 255, .1) 50%, rgba(255, 255, 255, .1) 75%, transparent 75%);
+  background-size: 8px 8px;
+  border-radius: 2px;
+  box-shadow:
+    inset 0 4px 0 rgba(255, 255, 255, .26),
+    inset 4px 0 0 rgba(255, 255, 255, .12),
+    inset -4px 0 0 rgba(0, 0, 0, .16),
+    inset 0 -5px 0 rgba(0, 0, 0, .34),
+    inset 0 0 0 1px var(--rovi-tinta);
 }
 
 .sprite {
@@ -603,8 +817,28 @@ h2, h3 {
 /* Padding goes on the svg, never on the .sprite: a percentage padding resolves against
    the *board's* width, so 12% on a sprite was wider than a whole cell and collapsed the
    drawing to nothing. That is how the batteries went missing. */
-.goal svg { padding: 8%; }
-.battery svg { padding: 16%; }
+.goal svg { padding: 6%; }
+.battery svg { padding: 14%; }
+
+/* Once the last tile has landed, everything standing on the world drops onto it — all
+   of it together, so a level reads first as ground and then as a puzzle laid out on it.
+   The delay is the whole build — a step for every tile plus the last one's rise — and
+   then a beat. Leaving the rise out of that sum is the obvious mistake: the batteries
+   start falling while the bottom row is still on its way up.
+
+   The animation goes on the sprite's child and never on the sprite itself: the sprite's
+   own transform is what places it on the grid, and animating that would send every
+   battery falling from the top left corner of the board. */
+.sprite > * {
+  animation: sprite-drop .36s cubic-bezier(.25, .9, .35, 1.15) backwards;
+  animation-delay: calc(var(--tiles, 30) * var(--tile-step) + var(--tile-rise) + 40ms);
+}
+
+@keyframes sprite-drop {
+  from { transform: translateY(-55%); opacity: 0; }
+  60% { opacity: 1; }
+  to { transform: none; opacity: 1; }
+}
 
 .robot { z-index: 3; transition: transform .3s ease-in-out; }
 
@@ -613,15 +847,33 @@ h2, h3 {
   height: 100%;
   transform: rotate(var(--spin, 0deg));
   transition: transform .3s ease-in-out;
+  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, .35));
+  animation-name: robot-drop;
 }
 
-.robot-svg { padding: 4%; }
-.robot-body { fill: var(--game-ink); }
-.robot-wheel { fill: var(--game-ink-soft); }
-.robot-eye { fill: var(--rb-blanco); }
-.robot-mouth { fill: var(--game-ink-soft); }
-.robot-spark { fill: var(--game-spark); }
-.robot-antenna { stroke: var(--game-ink); }
+/* The robot falls with the others but has to keep the heading it starts the level with,
+   so it needs its own keyframes. The translate is written before the rotate on purpose:
+   that way it falls straight down the screen instead of down the robot's own rotated
+   frame, which is what -Y means everywhere else in this file. */
+@keyframes robot-drop {
+  from { transform: translateY(-55%) rotate(var(--spin, 0deg)); opacity: 0; }
+  60% { opacity: 1; }
+  to { transform: rotate(var(--spin, 0deg)); opacity: 1; }
+}
+
+/* Rovi from above: the cream shell, the dark screen it wears its face on, four black
+   wheels with amber hubs, and the cyan antenna cube pointing the way it will walk. */
+.robot-svg { padding: 2%; }
+.robot-shell { fill: var(--rovi-hueso); }
+.robot-shade { fill: var(--rovi-hueso-sombra); }
+.robot-screen { fill: var(--rovi-tinta); }
+.robot-eye { fill: var(--rovi-cian); }
+.robot-panel { fill: var(--rovi-agua-claro); }
+.robot-wheel { fill: var(--rovi-noche); }
+.robot-hub { fill: var(--game-spark); }
+.robot-spark { fill: var(--rovi-cian); }
+.robot-spark-shade { fill: var(--rovi-agua); }
+.robot-antenna { fill: var(--rovi-noche); }
 
 /* -Y in the robot's own rotated frame is always "forward", whatever the heading. */
 @keyframes robot-bump {
@@ -638,15 +890,24 @@ h2, h3 {
 
 .robot.is-happy .robot-inner { animation: robot-cheer .5s ease-in-out 2; }
 
+/* The flag is cyan, not green: it stands on grass, and the concept's own beacon is the
+   same cyan as Rovi's eyes. It turns amber once it is reached, because yellow is the
+   reward everywhere else on this page. */
 .goal { z-index: 1; }
-.goal-pole { stroke: var(--game-ink); }
-.goal-cloth { fill: var(--game-go); }
+.goal-base { fill: var(--rovi-tierra); }
+.goal-base-top { fill: color-mix(in srgb, var(--rovi-tierra) 78%, white); }
+.goal-pole { fill: var(--rovi-tinta); }
+.goal-cloth { fill: var(--rovi-cian); }
+.goal-cloth-shade { fill: var(--rovi-agua); }
 .goal.is-reached .goal-cloth { fill: var(--game-spark); }
+.goal.is-reached .goal-cloth-shade { fill: var(--rovi-tierra); }
 
 .battery { z-index: 2; transition: transform .25s ease, opacity .25s ease; }
+.battery svg { filter: drop-shadow(0 2px 0 rgba(0, 0, 0, .25)); }
 .battery-body { fill: var(--game-spark); }
-.battery-cap { fill: var(--game-ink); }
-.battery-bolt { fill: var(--game-ink); }
+.battery-shade { fill: color-mix(in srgb, var(--game-spark) 72%, var(--rovi-tierra)); }
+.battery-cap { fill: var(--rovi-tinta); }
+.battery-bolt { fill: var(--rovi-tinta); }
 
 .battery.is-taken {
   transform: translate(calc(var(--x) * var(--cell)), calc(var(--y) * var(--cell))) scale(.2);
@@ -657,77 +918,112 @@ h2, h3 {
 
 .controls { display: flex; gap: var(--rb-space-1); flex-wrap: wrap; }
 
+/* Same block as every other button: flat face, lit top edge, hard shadow underneath
+   that the button drops into when it is pressed. */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: .5rem;
-  padding: .625rem 1rem;
-  border: 2px solid var(--game-line);
-  border-radius: 999px;
-  background: var(--game-surface);
-  color: var(--game-ink);
-  font-family: var(--rb-font-titulo);
+  padding: .7rem .8rem;
+  border: 0;
+  border-radius: 8px;
+  background: var(--game-chip);
+  box-shadow: inset 0 2px 0 var(--face-lit), 0 4px 0 rgba(0, 0, 0, .38);
+  color: var(--rb-blanco);
+  font-family: var(--game-font-pixel);
+  /* A pixel face is drawn on a grid, so it wants whole pixels: 16px is one row per
+     pixel and stays crisp, 18px lands between rows and goes fuzzy. The five controls
+     also have to sit on one line — a wrapped row costs the board its height. */
   font-size: var(--rb-text-base);
   font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.btn:hover:not(:disabled) { border-color: var(--game-ink); }
-.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn:hover:not(:disabled) { filter: brightness(1.15); }
+
+.btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: inset 0 2px 0 var(--face-lit), 0 1px 0 rgba(0, 0, 0, .38);
+}
+
+.btn:disabled { opacity: .4; cursor: not-allowed; box-shadow: 0 4px 0 rgba(0, 0, 0, .25); }
 
 .btn-icon { width: 1.125rem; height: 1.125rem; flex: none; fill: currentColor; }
-#stop-btn:not(:disabled) .btn-icon { fill: var(--rb-naranja-juego); }
+#run-btn .btn-icon { fill: var(--game-ink); }
+#stop-btn:not(:disabled) .btn-icon { fill: var(--rovi-sol); }
 /* The reset arrow is drawn as a stroke, and the fill above would flood the arc. */
 #reset-btn .btn-icon { fill: none; }
 
 .btn-run {
   flex: 1;
   background: var(--game-go);
-  border-color: var(--game-go);
-  color: var(--rb-blanco);
+  color: var(--game-ink);
 }
-
-.btn-run:hover:not(:disabled) { filter: brightness(1.1); border-color: var(--game-go); }
 
 .btn-quiet {
   align-self: flex-start;
-  padding: .375rem .75rem;
-  border-color: transparent;
-  font-size: var(--rb-text-sm);
+  padding: .3rem .7rem;
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--rb-text-base);
   color: var(--game-muted);
 }
+
+.btn-quiet:hover:not(:disabled) { color: var(--rb-blanco); filter: none; }
+.btn-quiet:active:not(:disabled) { transform: none; box-shadow: none; }
 
 .status {
   min-height: 2.75rem;
   margin: 0;
   padding: .5rem .75rem;
-  border-radius: var(--rb-radio);
-  background: var(--game-page);
+  border-radius: 8px;
+  background: var(--game-well);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, .35);
   color: var(--game-muted);
   font-size: var(--rb-text-sm);
 }
 
-.status-warn { background: var(--rb-durazno); color: var(--game-ink); font-weight: 600; }
-.status-win { background: var(--rb-menta); color: var(--game-ink); font-weight: 600; }
+.status-warn {
+  background: color-mix(in srgb, var(--rovi-sol) 20%, var(--game-well));
+  color: var(--rovi-sol);
+  font-weight: 600;
+}
+
+.status-win {
+  background: color-mix(in srgb, var(--rovi-pasto) 24%, var(--game-well));
+  color: var(--rovi-pasto-claro);
+  font-weight: 600;
+}
 
 /* ---------- hint ---------- */
 
+/* The concept's "misión actual" card: a darker plate on the panel, with the label in
+   pixel type and the sentence itself in Nunito. */
 .hint {
   margin-top: auto;
   padding: var(--rb-space-1);
-  border-radius: var(--rb-radio);
-  background: var(--rb-crema);
+  border-radius: 10px;
+  background: var(--game-well);
+  border-left: 4px solid var(--game-spark);
 }
 
 .hint-title {
+  font-family: var(--game-font-pixel);
   font-size: var(--rb-text-sm);
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .06em;
-  color: var(--game-muted);
+  color: var(--game-spark);
 }
 
-.hint-text { margin: .25rem 0 0; font-size: var(--rb-text-sm); }
+.hint-text {
+  margin: .25rem 0 0;
+  font-family: var(--game-font-block);
+  font-size: var(--rb-text-sm);
+  color: var(--game-paper);
+}
 
 /* ---------- win dialog ---------- */
 
@@ -738,7 +1034,7 @@ h2, h3 {
   display: grid;
   place-items: center;
   padding: var(--rb-space-2);
-  background: rgba(18, 24, 29, .5);
+  background: rgba(10, 18, 24, .72);
 }
 
 .overlay[hidden] { display: none; }
@@ -746,17 +1042,22 @@ h2, h3 {
 .dialog {
   width: min(26rem, 100%);
   padding: var(--rb-space-4);
-  border-radius: var(--rb-radio);
+  border: 3px solid var(--game-line);
+  border-radius: 14px;
   background: var(--game-surface);
-  box-shadow: var(--game-shadow);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, .08), var(--game-shadow);
   text-align: center;
 }
 
-.dialog-title { font-size: var(--rb-text-2xl); }
+.dialog-title {
+  font-family: var(--game-font-pixel);
+  font-size: var(--rb-text-2xl);
+  color: var(--rovi-cian);
+}
 
 .stars { display: flex; justify-content: center; gap: .5rem; margin: var(--rb-space-2) 0; }
-.star { width: 3rem; height: 3rem; fill: var(--game-line); }
-.star.is-on { fill: var(--game-spark); }
+.star { width: 3rem; height: 3rem; fill: var(--game-well); }
+.star.is-on { fill: var(--game-spark); filter: drop-shadow(0 0 8px rgba(239, 171, 23, .6)); }
 
 .dialog-text { margin: 0 0 var(--rb-space-3); color: var(--game-muted); }
 .dialog-actions { display: flex; gap: var(--rb-space-1); justify-content: center; }
@@ -774,8 +1075,11 @@ h2, h3 {
 
 @media (prefers-reduced-motion: reduce) {
   .robot, .robot-inner, .battery, .pip-slot { transition-duration: .01ms; }
+  /* The level has to be on screen at once, not built: `backwards` would otherwise hold
+     every tile and every sprite hidden until a delay that no longer runs. */
+  .cell, .sprite > *,
   .robot.is-bumping .robot-inner,
   .robot.is-happy .robot-inner,
   .block.is-running { animation: none; }
-  .block.is-running { filter: drop-shadow(0 0 4px var(--game-spark)); }
+  .block.is-running { filter: drop-shadow(0 0 4px var(--rovi-cian)); }
 }

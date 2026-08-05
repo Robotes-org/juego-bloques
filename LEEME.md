@@ -10,6 +10,10 @@ girar, y los últimos obligan a usar repeticiones dentro de repeticiones.
 del mapa.** Están separadas a propósito: el niño que no encuentra el camino ingenioso
 igual avanza, y las pilas son la razón para volver a un nivel que ya ganó.
 
+El juego está dibujado como el concepto de **Rovi** (`assets/rovi-concept.png`): un mundo
+de cubos visto desde arriba, con pasto, piedra y un rover de cara celeste. Los bloques
+siguen con la forma de Scratch a propósito, porque es a donde pasan los niños después.
+
 ## Cómo abrirlo
 
 Haz doble clic en `index.html`. Eso es todo: no necesita internet, ni instalación, ni

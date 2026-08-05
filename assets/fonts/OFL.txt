@@ -1,4 +1,12 @@
-Copyright 2014 The Nunito Project Authors (https://github.com/googlefonts/nunito)
+Both fonts shipped in this folder are licensed under the SIL Open Font License,
+Version 1.1, whose text follows. Only the latin subset of each one is included.
+
+  nunito-latin.woff2
+  Copyright 2014 The Nunito Project Authors (https://github.com/googlefonts/nunito)
+
+  silkscreen-latin.woff2
+  Copyright 2001 The Silkscreen Project Authors
+  (https://github.com/googlefonts/silkscreen)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

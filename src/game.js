@@ -46,9 +46,11 @@
     overflow: 'El programa es demasiado largo. Baja el número de alguna repetición.'
   };
 
+  // The same battery as the one on the board, drawn square: see BATTERY_SVG in board.js.
   var BATTERY_ICON = '<svg class="pip" viewBox="0 0 64 64" aria-hidden="true">' +
-    '<rect class="battery-cap" x="26" y="8" width="12" height="8" rx="2"/>' +
-    '<rect class="battery-body" x="18" y="16" width="28" height="42" rx="6"/>' +
+    '<rect class="battery-cap" x="26" y="6" width="12" height="6"/>' +
+    '<rect class="battery-body" x="16" y="12" width="32" height="44"/>' +
+    '<rect class="battery-shade" x="40" y="12" width="8" height="44"/>' +
     '<path class="battery-bolt" d="M34 24 L24 40 H31 L29 52 L40 34 H33 Z"/></svg>';
 
   var current = 0;

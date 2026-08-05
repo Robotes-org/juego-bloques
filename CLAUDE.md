@@ -45,6 +45,9 @@ python3 -m http.server 8000  # only if you want a server, not required
   Refresh with `cp ~/marca/assets/tokens.css assets/tokens.css`.
 - `assets/fonts/nunito-latin.woff2` — Nunito, self-hosted, latin subset only, 39 KB.
   Variable font, so the one file covers every weight. Licence in `assets/fonts/OFL.txt`.
+- `assets/fonts/silkscreen-latin.woff2` — Silkscreen, the pixel face, 7 KB, same subset.
+- `assets/rovi-concept.png` — the concept sheet the whole skin comes from. Not loaded by
+  the game; it is here so the next person can see what the page is trying to look like.
 
 ## How a level is won
 
@@ -105,34 +108,50 @@ some batteries off the direct path so the detour is the challenge.
 - **Text for eight year olds.** Short sentences, verbs they know, and failure messages
   that say what went wrong rather than that they failed ("El robot chocó con un muro.
   Revisa por dónde gira." — never "Error" or "Incorrecto").
-- **No hex colours.** Everything resolves through `--rb-*` tokens. A colour that is
-  missing gets added to `~/marca/assets/tokens.css` first, then copied over.
-- **This page uses the "tintas de taller" family**, the pastel side of the brand
-  reserved for material aimed at the children (`~/marca/manual/03-color.md` §3.7). The
-  institutional palette is sober by design, which is right for a school director and
-  wrong for a nine year old. **Text on those tints is always Pizarra, never white** —
-  they are light, and white on them does not clear 2.5:1.
-- **The page is pinned light and must stay that way.** It aliases the raw tokens as
-  `--game-*` in `:root` instead of using the semantic roles (`--rb-fondo`, `--rb-texto`),
-  which flip with `prefers-color-scheme`. A child whose laptop is in dark mode must see
-  the same board as the one projected at the front of the room. Same reasoning as
-  `website`; §3.6 keeps dark mode for projected screens.
-- **Yellow is the reward.** Amarillo Chispa is the batteries, the stars, the robot's
-  antenna, the running block and the levels finished with all three — never a button.
-  *Ejecutar* is Verde Bosque, which also reads as "go".
-- Blocks are coloured by family, like Scratch: movement is Azul Juego, `repetir` is
-  Naranja Juego. Do not give *avanzar* and *girar* different colours — they are the same
-  idea to a child. These children move on to Scratch afterwards, and the colour memory
-  is part of what they take with them.
-- **The blocks are set in Nunito, and only the blocks** (`--game-font-block`). Everything
-  else keeps the brand's own type stack. It is self-hosted rather than loaded from a CDN
-  because the game has to open from a pendrive with no connection — the same reason the
-  scripts are not ES modules.
-  This is the one place where a design decision was deliberately kept out of `~/marca`:
-  the founder chose to keep the font local to the game rather than declare a "workshop
-  typeface" in the manual the way the pastel tints were declared. If a second piece of
-  children's material ever needs it, move it to `~/marca` then rather than copying the
-  `@font-face` across.
+- **The palette is the concept's, and it is the one place this repo writes its own
+  colours.** The eight `--rovi-*` swatches at the top of `styles.css` are sampled from
+  `assets/rovi-concept.png`; everything else on the page is an alias of one of them. The
+  house rule is still that a colour lives in `~/marca` first, and this branch breaks it
+  knowingly: the concept is not brand material until somebody decides it is, and eight
+  swatches should not be written into the manual on the strength of one image. **If the
+  concept is adopted, move that block to `~/marca/assets/tokens.css` as its own family
+  and turn `:root` back into aliases.** Until then, do not add a ninth colour here —
+  derive it with `color-mix` from the eight, the way `--rovi-naranja` is derived.
+- Contrast is measured, not eyeballed, and the numbers are in the comment at the top of
+  `styles.css`. Two of them are load-bearing: the raw concept blue only reaches 3.52:1
+  under block text, so blocks are painted in its lighter face; and `--rovi-piedra` is a
+  wall colour, never text on navy.
+- **The page has one fixed appearance and must keep it.** It aliases raw values in
+  `:root` instead of the semantic `--rb-fondo` / `--rb-texto` roles, which flip with
+  `prefers-color-scheme`. A child whose laptop is in dark mode must see the same board as
+  the one projected at the front of the room. The skin is now dark, which is what the
+  concept asks for — the rule was never "be light", it was "be the same on every laptop
+  in the room".
+- **Yellow is the reward.** Amber is the batteries, the stars, the pips and the levels
+  finished with all three — never a button and, since this skin, never a block either.
+  That is why `repetir` is `--rovi-naranja` and not the amber it started as, and why the
+  running block's halo is cyan: an amber glow around an amber block is invisible, on
+  exactly the piece a child is being told to watch.
+- Blocks are coloured by family, like Scratch: movement is blue, `repetir` is orange. Do
+  not give *avanzar* and *girar* different colours — they are the same idea to a child.
+  These children move on to Scratch afterwards, and the colour memory is part of what
+  they take with them.
+- **Two faces, and each has a job.** Nunito (`--game-font-block`) sets the blocks and
+  every sentence a child reads. Silkscreen (`--game-font-pixel`) sets names and labels:
+  titles, chips, buttons, the brand. The concept does the same thing — pixel type on its
+  plates, a rounded sans in its paragraphs — and it is also the readable answer, because
+  a pixel face costs an eight year old real speed over a full line.
+- **Silkscreen never sets a digit the child has to act on.** Its 4 has an open top that
+  reads as a blob and its 5 reads as an S. Level numbers, the count inside a `repetir`
+  and the block counter are all Nunito for that reason. Pixelify Sans was tried first and
+  dropped over the same glyphs. In a level's own name the number is incidental, so the
+  title chip keeps its pixel type.
+- Both faces are self-hosted rather than loaded from a CDN because the game has to open
+  from a pendrive with no connection — the same reason the scripts are not ES modules.
+  Fonts are the one design decision deliberately kept out of `~/marca`: the founder chose
+  to keep them local to the game rather than declare a "workshop typeface" in the manual.
+  If a second piece of children's material ever needs them, move them to `~/marca` then
+  rather than copying the `@font-face` across.
 - **Both ways of adding a block have to keep working.** Clicking a palette block appends
   it; dragging drops it exactly where you want. Dragging is still hard at eight, and
   clicking is what most children use for the first few sessions.
@@ -156,6 +175,52 @@ with the clock switched off, and `step()` drives one tick by hand. Keep it that 
 second interpreter for stepping would drift from the real one, and then the debugger
 would lie.
 
+## The Rovi skin
+
+The page is dressed as the concept sheet in `assets/rovi-concept.png`: a voxel world seen
+from above, navy chrome, a cream and cyan rover.
+
+- **The board stays top-down. It is not going isometric.** Every level map, the robot's
+  rotation, the bump animation and the drag-and-drop hit testing are written against a
+  square grid, and an isometric board rewrites all four for a change of camera angle.
+  Depth is faked the way a voxel game fakes it in a map view: **a lit top edge and a
+  shaded bottom edge on a flat face**, which is what `--face-lit` and `--face-dark` are
+  for. Every block on the page uses them — the tiles, the walls, the buttons, the pieces.
+- **Sprites are rectangles on a four unit grid inside a 64 unit box, and nothing is
+  rounded.** That is the whole of the voxel look, and it survives being scaled down to a
+  28 pixel cell far better than curves do.
+- **Detail that is smaller than about four units disappears at cell size.** Rovi's eyes
+  were first drawn as the concept's pixel arcs, three rectangles each, and on the board
+  they were six specks of noise; they are solid blocks now. The flag was six steps and
+  read as a feather; it is three. When in doubt, draw fewer and bigger shapes.
+- Rovi wears his face flat on top, which a real rover seen from above would not. The eyes
+  and the antenna are how a child reads which way the robot is about to walk, and that
+  beats being right about the camera. The antenna points forward for the same reason,
+  though the concept puts it behind.
+- The goal flag is cyan and the grass is green, which is not a free choice: a green flag
+  on green ground disappears. Cyan is also the concept's own colour for something
+  powered up, which is why it is on the flag, the eyes, the running block and the drop
+  indicator.
+- The clouds behind the board are five flat `linear-gradient` layers on `.board-wrap`,
+  hard-edged on purpose. A blurred radial cloud would be the only soft thing on the page.
+- **Opening a level builds it**: the tiles rise into place one at a time, and once the
+  ground is finished everything standing on it drops in together. `board.js` only sets
+  the two numbers the timing needs — `--i`, a tile's turn in the sweep, and `--tiles`,
+  how many turns there are — and the animation itself lives in the stylesheet.
+  Three things about it are easy to break:
+  - The sprites wait for `--tiles` steps **plus one `--tile-rise`**. Leave the rise out
+    of that sum and the batteries start falling while the bottom row is still rising.
+  - `.board`'s own background is a shadow and not the grass colour. It is covered
+    completely once the tiles land, so it is only ever seen during the build — and
+    against green, tiles rise into a green square and the whole sweep is invisible.
+  - The drop is animated on the sprite's **child**, never on `.sprite` itself, whose
+    transform is what places it on the grid. The robot needs its own keyframes on top of
+    that, because it has to keep its heading while it falls, and its `translateY` is
+    written before the `rotate` so it falls down the screen rather than down its own
+    rotated frame.
+  The whole thing is off under `prefers-reduced-motion`, where `backwards` would
+  otherwise hold every tile hidden waiting for a delay that no longer runs.
+
 ## Design decisions worth keeping
 
 - **Blocks are cut to a puzzle-piece silhouette with `clip-path`** — a notch on top, a
@@ -165,6 +230,9 @@ would lie.
   `outline` and `box-shadow` are cut off (the running piece is marked with a
   `drop-shadow` halo, which follows the silhouette), and the bump has to live *inside*
   the box, which is what the extra bottom padding is for.
+  **The pieces stayed Scratch-shaped when the rest of the page went voxel**, and that was
+  a decision rather than an oversight: the shape and the two family colours are what a
+  child carries over to Scratch afterwards, so the skin changes around them.
 - **Rounded corners are points, not a radius.** `polygon()` only draws straight lines, so
   each corner is three extra vertices along the quarter circle, from the `--r1/--r2/--r3`
   offsets in `:root`. Changing `--piece-radius` rescales them all.
