@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ruta Robot — robotes.org</title>
+<meta name="description" content="Juego de programación por bloques para 3º y 4º básico: guía al robot hasta la bandera.">
+<link rel="icon" href="assets/logo/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/tokens.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
+      <rect width="64" height="64" rx="14" fill="var(--game-ink)"/>
+      <circle cx="23" cy="34" r="7" fill="var(--game-paper)"/>
+      <circle cx="43" cy="34" r="7" fill="var(--game-paper)"/>
+      <circle cx="32" cy="12" r="5" fill="var(--game-spark)"/>
+    </svg>
+    <span class="brand-name">Ruta Robot</span>
+  </div>
+  <nav class="levels" id="level-nav" aria-label="Niveles"></nav>
+</header>
+
+<main class="stage">
+
+  <section class="panel palette-panel">
+    <h2 class="panel-title">Bloques</h2>
+    <div class="palette" id="palette"></div>
+    <div class="hint">
+      <h3 class="hint-title">Pista</h3>
+      <p class="hint-text" id="hint"></p>
+    </div>
+  </section>
+
+  <section class="panel program-panel">
+    <h2 class="panel-title">
+      Tu programa
+      <span class="counter" id="counter"></span>
+    </h2>
+    <div class="program" id="program" aria-label="Programa del robot"></div>
+    <button class="btn btn-quiet" id="clear-btn" type="button">Borrar todo</button>
+  </section>
+
+  <section class="panel board-panel">
+    <h2 class="panel-title">
+      <span id="level-title"></span>
+      <span class="batteries" id="batteries"></span>
+    </h2>
+    <div class="board-wrap">
+      <div class="board" id="board"></div>
+    </div>
+    <p class="status" id="status" role="status"></p>
+    <div class="controls">
+      <button class="btn btn-run" id="run-btn" type="button">
+        <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5 L19 12 L7 19.5 Z"/></svg>
+        Ejecutar
+      </button>
+      <button class="btn" id="step-btn" type="button" title="Ejecuta un bloque y espera">
+        <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5 L15 12 L5 19.5 Z"/><rect x="17" y="4.5" width="3" height="15" rx="1.5"/></svg>
+        Paso
+      </button>
+      <button class="btn" id="stop-btn" type="button" title="Detiene el robot donde va">
+        <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="3"/></svg>
+        Detener
+      </button>
+      <button class="btn" id="reset-btn" type="button" title="Devuelve el robot al inicio">
+        <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11 A7 7 0 1 1 7 16.5 M4 6 L5 11 L10 10"/></svg>
+        Reiniciar
+      </button>
+      <button class="btn btn-speed" id="speed-btn" type="button" aria-pressed="false">Rápido</button>
+    </div>
+  </section>
+
+</main>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+    <h2 class="dialog-title" id="dialog-title">¡Lo lograste!</h2>
+    <div class="stars" id="dialog-stars"></div>
+    <p class="dialog-text" id="dialog-text"></p>
+    <div class="dialog-actions">
+      <button class="btn btn-quiet" id="again-btn" type="button">Jugar de nuevo</button>
+      <button class="btn btn-run" id="next-btn" type="button">Siguiente nivel</button>
+    </div>
+  </div>
+</div>
+
+<script src="src/levels.js"></script>
+<script src="src/board.js"></script>
+<script src="src/editor.js"></script>
+<script src="src/runner.js"></script>
+<script src="src/game.js"></script>
+</body>
+</html>

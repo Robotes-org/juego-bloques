@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+<meta charset="utf-8">
+<title>Ruta Robot — pruebas</title>
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { display: block; padding: 1rem; }
+  #stage { position: absolute; left: -9999px; width: 900px; height: 600px; }
+  #board-host { width: 600px; height: 500px; }
+  pre { font-family: var(--rb-font-mono); font-size: 13px; line-height: 1.5; }
+  .pass { color: #1e7a5a; }
+  .fail { color: #b3261e; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<h1>Pruebas de Ruta Robot</h1>
+<pre id="out">corriendo…</pre>
+
+<!-- Off-screen, but really in the document: the board measures itself, and the
+     editor's drag code reads element positions, so neither works in a detached node. -->
+<div id="stage">
+  <div id="board-host"><div id="board"></div></div>
+  <div id="palette" class="palette"></div>
+  <div id="program" class="program"></div>
+  <span id="counter"></span>
+</div>
+
+<script src="../src/levels.js"></script>
+<script src="../src/board.js"></script>
+<script src="../src/editor.js"></script>
+<script src="../src/runner.js"></script>
+<script src="solver.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var out = document.getElementById('out');
+  var lines = [];
+  var failures = 0;
+
+  function log(text, cls) {
+    lines.push(cls ? '<span class="' + cls + '">' + text + '</span>' : text);
+    out.innerHTML = lines.join('\n');
+  }
+
+  function check(name, ok, detail) {
+    if (!ok) failures++;
+    log((ok ? '  ok   ' : '  FAIL ') + name + (detail ? '  — ' + detail : ''), ok ? 'pass' : 'fail');
+  }
+
+  /* ---------- 1. every level can actually be finished in the real runner ---------- */
+
+  /* Plays the route that collects all three batteries: it must win with three stars. */
+  function playLevel(level, done) {
+    var board = Board.create(document.getElementById('board'), level);
+    var solution = Solver.solve(level, { collect: true });
+    if (!solution) { check(level.name, false, 'sin ruta que junte las pilas'); return done(); }
+
+    var steps = solution.actions.map(function (a, i) { return { type: a, id: 'step' + i }; });
+    var pips = 0;
+
+    Runner.run({
+      board: board,
+      level: level,
+      steps: steps,
+      delay: 4,
+      onHighlight: function () {},
+      onBattery: function (collected) { pips = collected; },
+      onFinish: function (result, info) {
+        check('nivel ' + level.name,
+          result === 'win' && info.collected === 3 && info.total === 3 && pips === 3,
+          'resultado: ' + result + ', pilas ' + info.collected + '/' + info.total);
+        done();
+      }
+    });
+  }
+
+  /* And the short route to the flag: it must also win, just with fewer stars. */
+  function playDirect(level, done) {
+    var board = Board.create(document.getElementById('board'), level);
+    var solution = Solver.solve(level);
+    var steps = solution.actions.map(function (a, i) { return { type: a, id: 'd' + i }; });
+    Runner.run({
+      board: board, level: level, steps: steps, delay: 4,
+      onHighlight: function () {},
+      onBattery: function () {},
+      onFinish: function (result, info) {
+        check('ruta corta de "' + level.name + '" gana con ' + info.collected + ' de 3 pilas',
+          result === 'win', 'resultado: ' + result);
+        done();
+      }
+    });
+  }
+
+  /* ---------- 2. the runner stops the robot at walls and counts batteries ---------- */
+
+  function crashTest(done) {
+    var level = { name: 'crash', dir: 'E', blocks: ['forward'], map: ['R#M'] };
+    var board = Board.create(document.getElementById('board'), level);
+    Runner.run({
+      board: board, level: level, delay: 4,
+      steps: [{ type: 'forward', id: 'a' }],
+      onHighlight: function () {}, onBattery: function () {},
+      onFinish: function (result) {
+        check('chocar con un muro se informa', result === 'crash', 'resultado: ' + result);
+        done();
+      }
+    });
+  }
+
+  function batteryTest(done) {
+    // The batteries are the stars, not the door: the flag alone finishes the level.
+    var level = { name: 'battery', dir: 'E', blocks: ['forward'], map: ['R.M*'] };
+    var board = Board.create(document.getElementById('board'), level);
+    Runner.run({
+      board: board, level: level, delay: 4,
+      steps: [{ type: 'forward', id: 'a' }, { type: 'forward', id: 'b' }],
+      onHighlight: function () {}, onBattery: function () {},
+      onFinish: function (result, info) {
+        check('llegar sin las pilas igual gana', result === 'win', 'resultado: ' + result);
+        check('las pilas no recogidas no cuentan', info.collected === 0 && info.total === 1,
+          info.collected + '/' + info.total);
+        done();
+      }
+    });
+  }
+
+  /* Step mode: nothing moves until the child asks for the next block. */
+  function manualTest(done) {
+    var level = { name: 'manual', dir: 'E', blocks: ['forward'], map: ['R..M'] };
+    var board = Board.create(document.getElementById('board'), level);
+    var finished = false;
+    var moves = [{ type: 'forward', id: 'a' }, { type: 'forward', id: 'b' }, { type: 'forward', id: 'c' }];
+
+    var session = Runner.run({
+      board: board, level: level, steps: moves, delay: 4, manual: true,
+      onHighlight: function () {}, onBattery: function () {},
+      onFinish: function () { finished = true; }
+    });
+
+    window.setTimeout(function () {
+      check('en modo paso el robot no avanza solo', !finished && session.isManual());
+      session.step();
+      session.step();
+      session.step();
+      window.setTimeout(function () {
+        check('tres pasos a mano llegan a la bandera', finished);
+        done();
+      }, 80);
+    }, 80);
+  }
+
+  /* And play picks a paused run back up instead of starting over. */
+  function resumeTest(done) {
+    var level = { name: 'resume', dir: 'E', blocks: ['forward'], map: ['R..M'] };
+    var board = Board.create(document.getElementById('board'), level);
+    var finished = false;
+    var moves = [{ type: 'forward', id: 'a' }, { type: 'forward', id: 'b' }, { type: 'forward', id: 'c' }];
+
+    var session = Runner.run({
+      board: board, level: level, steps: moves, delay: 4, manual: true,
+      onHighlight: function () {}, onBattery: function () {},
+      onFinish: function (result) { finished = result; }
+    });
+
+    session.step();                      // one block by hand, then let it run
+    session.resume();
+    check('reanudar deja de ser modo paso', !session.isManual());
+    window.setTimeout(function () {
+      check('reanudar termina el programa', finished === 'win', 'resultado: ' + finished);
+      done();
+    }, 120);
+  }
+
+  function turnTest(done) {
+    // Four right turns must bring the heading back to where it started.
+    var level = { name: 'turn', dir: 'N', blocks: ['forward'], map: ['R', '.', 'M'] };
+    var board = Board.create(document.getElementById('board'), level);
+    var steps = [];
+    ['right', 'right', 'right', 'right'].forEach(function (t, i) { steps.push({ type: t, id: 't' + i }); });
+    steps.push({ type: 'right', id: 'x' }, { type: 'right', id: 'y' });   // now facing south
+    steps.push({ type: 'forward', id: 'f1' }, { type: 'forward', id: 'f2' });
+    Runner.run({
+      board: board, level: level, delay: 4, steps: steps,
+      onHighlight: function () {}, onBattery: function () {},
+      onFinish: function (result) {
+        check('cuatro giros vuelven al mismo rumbo', result === 'win', 'resultado: ' + result);
+        done();
+      }
+    });
+  }
+
+  /* ---------- 3. compiling loops ---------- */
+
+  function compileTests() {
+    var flat = Runner.compile([{ id: 'a', type: 'forward' }, { id: 'b', type: 'right' }]);
+    check('compilar una lista simple', flat.steps.length === 2 && !flat.overflow);
+
+    var loop = Runner.compile([
+      { id: 'r', type: 'repeat', times: 3, body: [{ id: 'f', type: 'forward' }] }
+    ]);
+    check('repetir 3 produce 3 pasos', loop.steps.length === 3, 'obtuvo ' + loop.steps.length);
+    check('cada paso recuerda su bloque', loop.steps.every(function (s) { return s.id === 'f'; }));
+
+    var nested = Runner.compile([
+      { id: 'r1', type: 'repeat', times: 4, body: [
+        { id: 'r2', type: 'repeat', times: 2, body: [{ id: 'f', type: 'forward' }] },
+        { id: 'l', type: 'left' }
+      ] }
+    ]);
+    check('repetir anidado produce 4 × (2 + 1) pasos', nested.steps.length === 12, 'obtuvo ' + nested.steps.length);
+
+    var huge = Runner.compile([
+      { id: 'a', type: 'repeat', times: 10, body: [
+        { id: 'b', type: 'repeat', times: 10, body: [
+          { id: 'c', type: 'repeat', times: 10, body: [{ id: 'f', type: 'forward' }] }
+        ] }
+      ] }
+    ]);
+    check('un programa enorme se detiene en el tope', huge.overflow && huge.steps.length <= Runner.MAX_STEPS);
+
+    var empty = Runner.compile([{ id: 'r', type: 'repeat', times: 5, body: [] }]);
+    check('repetir vacío no produce pasos', empty.steps.length === 0);
+  }
+
+  /* ---------- 4. the editor: clicking, dragging and nesting ---------- */
+
+  function pointer(type, target, x, y) {
+    target.dispatchEvent(new PointerEvent(type, {
+      bubbles: true, cancelable: true, pointerId: 1, button: 0, isPrimary: true,
+      clientX: x, clientY: y
+    }));
+  }
+
+  function centreOf(el) {
+    var r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+
+  function clickBlock(el) {
+    var c = centreOf(el);
+    pointer('pointerdown', el, c.x, c.y);
+    pointer('pointerup', document, c.x, c.y);
+  }
+
+  function dragBlock(el, target) {
+    var from = centreOf(el);
+    var to = centreOf(target);
+    pointer('pointerdown', el, from.x, from.y);
+    pointer('pointermove', document, from.x + 20, from.y + 20);
+    pointer('pointermove', document, to.x, to.y);
+    pointer('pointerup', document, to.x, to.y);
+  }
+
+  var rejected = 0;
+
+  function editorTests() {
+    var level = LEVELS[4];   // offers every block, including repeat
+    var palette = document.getElementById('palette');
+    var program = document.getElementById('program');
+
+    // Mounted once for the whole file: mounting twice would register the document
+    // level pointer listeners twice over.
+    Editor.mount({
+      palette: palette,
+      program: program,
+      counter: document.getElementById('counter'),
+      onChange: function () {},
+      onReject: function () { rejected++; }
+    });
+    Editor.setLevel(level);
+
+    check('la paleta muestra los bloques del nivel',
+      palette.querySelectorAll('.block').length === level.blocks.length);
+
+    clickBlock(palette.querySelector('[data-type="forward"]'));
+    check('hacer clic en la paleta agrega el bloque', Editor.count() === 1, 'count ' + Editor.count());
+
+    clickBlock(palette.querySelector('[data-type="repeat"]'));
+    check('se puede agregar un repetir', Editor.count() === 2 &&
+      Editor.getProgram()[1].type === 'repeat');
+
+    var body = program.querySelector('.block-body');
+    check('el repetir se dibuja con su cuerpo', !!body);
+
+    dragBlock(palette.querySelector('[data-type="left"]'), body);
+    var repeatNode = Editor.getProgram()[1];
+    check('arrastrar dentro del repetir anida el bloque',
+      repeatNode.body.length === 1 && repeatNode.body[0].type === 'left',
+      JSON.stringify(Editor.getProgram()));
+    check('los bloques anidados cuentan para el total', Editor.count() === 3, 'count ' + Editor.count());
+
+    // Dragging a block out of the program drops it in the bin.
+    var nested = program.querySelector('.block-body .block');
+    var far = { x: 5, y: window.innerHeight - 5 };
+    pointer('pointerdown', nested, centreOf(nested).x, centreOf(nested).y);
+    pointer('pointermove', document, far.x, far.y);
+    pointer('pointerup', document, far.x, far.y);
+    check('soltar fuera del programa borra el bloque', Editor.count() === 2, 'count ' + Editor.count());
+
+    // The repeat counter has a floor, so a child cannot reach "repeat 0 times".
+    // Each press redraws the program, so the button has to be looked up again.
+    function pressTimes(delta, howMany) {
+      for (var n = 0; n < howMany; n++) {
+        clickBlock(program.querySelector('.times-btn[data-delta="' + delta + '"]'));
+      }
+    }
+
+    pressTimes(-1, 10);
+    check('el contador de repetir no baja de 2', Editor.getProgram()[1].times === 2,
+      'times ' + Editor.getProgram()[1].times);
+
+    pressTimes(1, 20);
+    check('el contador de repetir no pasa de 10', Editor.getProgram()[1].times === 10,
+      'times ' + Editor.getProgram()[1].times);
+
+    Editor.clear();
+    check('borrar todo deja el programa vacío', Editor.count() === 0);
+
+    // A level with a cap must refuse the block that would go over it.
+    var capped = LEVELS[3];   // max: 3
+    Editor.setLevel(capped);
+    for (var k = 0; k < 6; k++) clickBlock(palette.querySelector('[data-type="forward"]'));
+    check('el límite de bloques del nivel se respeta', Editor.count() === capped.max,
+      'count ' + Editor.count() + ' con max ' + capped.max);
+    check('pasarse del límite avisa al niño', rejected > 0);
+  }
+
+  /* ---------- run everything ---------- */
+
+  log('Bloques y editor');
+  compileTests();
+  editorTests();
+
+  log('');
+  log('Reglas del juego');
+
+  var extras = [crashTest, batteryTest, turnTest, manualTest, resumeTest];
+  var levelQueue = LEVELS.slice();
+
+  function nextExtra() {
+    var test = extras.shift();
+    if (test) return test(nextExtra);
+    log('');
+    log('Niveles (se juega la ruta de las 3 pilas: debe ganar con 3 estrellas)');
+    nextLevel();
+  }
+
+  function nextLevel() {
+    var level = levelQueue.shift();
+    if (!level) return startDirect();
+    playLevel(level, nextLevel);
+  }
+
+  var directQueue = [];
+
+  function startDirect() {
+    log('');
+    log('La ruta corta a la bandera también gana, con menos pilas');
+    directQueue = LEVELS.slice();
+    nextDirect();
+  }
+
+  function nextDirect() {
+    var level = directQueue.shift();
+    if (!level) return finish();
+    playDirect(level, nextDirect);
+  }
+
+  function finish() {
+    log('');
+    log(failures ? failures + ' PRUEBA(S) FALLARON' : 'TODAS LAS PRUEBAS PASARON', failures ? 'fail' : 'pass');
+    log('TESTS-DONE');
+  }
+
+  nextExtra();
+})();
+</script>
+</body>
+</html>

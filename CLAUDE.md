@@ -1,0 +1,211 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Purpose
+
+`juego-bloques` is **Ruta Robot**, a block-programming game for the 3rd and 4th grade
+children of the workshop (8 to 10 years old). The child stacks blocks — *avanzar*,
+*girar*, *repetir* — to walk a robot across a grid to a flag, picking up batteries on
+the way. Twelve levels introduce one idea at a time and end with loops inside loops.
+
+It is a teaching tool for the workshop, not a product. The robot lives on screen only:
+there is no Arduino export and no serial link to a real robot. If that is ever added it
+belongs behind a separate button, not woven into the block model.
+
+## Stack
+
+Plain HTML, CSS and JavaScript. No build step, no dependencies, no framework, no CDN.
+
+**The scripts are classic `<script src>` files, not ES modules, and the levels live in a
+`.js` file rather than JSON — both on purpose.** ES modules and `fetch` are blocked by
+the browser under `file://`, and the game has to survive being copied to a pendrive and
+opened with a double click in a rural school with no server and no connection. Do not
+convert `src/*.js` into modules, and do not load level data with `fetch`.
+
+```sh
+xdg-open index.html          # works straight from the filesystem
+python3 -m http.server 8000  # only if you want a server, not required
+./tools/test.sh              # levels + game
+```
+
+## Files
+
+- `index.html` — the whole page structure.
+- `styles.css` — all the styles.
+- `src/levels.js` — the twelve levels as ASCII maps. **Start here to change the game.**
+- `src/board.js` — parses a map, draws the grid, moves the robot.
+- `src/editor.js` — the palette and the block tree the child builds, including drag and drop.
+- `src/runner.js` — flattens the block tree into moves and plays them back.
+- `src/game.js` — glue: level navigation, progress, messages, win dialog.
+- `tools/solver.js` — breadth-first solver, shared by the checker and the tests.
+- `tools/check-levels.js` — proves every level is solvable and that `par`/`max` are honest.
+- `tools/test.html`, `tools/test.sh` — the test suite, run in headless Chrome.
+- `assets/tokens.css`, `assets/logo/favicon.svg` — **copied from `~/marca`, do not hand-edit.**
+  Refresh with `cp ~/marca/assets/tokens.css assets/tokens.css`.
+- `assets/fonts/nunito-latin.woff2` — Nunito, self-hosted, latin subset only, 39 KB.
+  Variable font, so the one file covers every weight. Licence in `assets/fonts/OFL.txt`.
+
+## How a level is won
+
+**Reaching the flag finishes the level. The three batteries are the three stars.** They
+are deliberately not a gate: a child who cannot see the clever route still moves on, and
+the batteries are the reason to come back to a level already beaten. Do not make them
+mandatory again — that was the first design and it turned every level into pass or fail.
+
+**All twelve levels are currently open**, whatever the child has finished: `UNLOCK_ALL`
+at the top of `src/game.js` is `true`. Setting it back to `false` restores unlocking each
+level with the previous one — the code for that path is still there and still works.
+
+Stars are only ever the batteries collected. There is no block-count par: counting blocks
+is an adult's idea of elegance, and *"you used 7, it can be done in 5"* means far less to
+an eight year old than a battery they can see sitting in a corner of the map.
+
+## Adding or changing a level
+
+Levels are ASCII maps in `src/levels.js`, one character per cell, all rows the same
+length: `.` floor, `#` wall, `R` the robot's start, `M` the goal, `*` a battery.
+
+```js
+{
+  name: 'El pasillo largo',
+  hint: 'Son muchos pasos iguales. Usa "repetir".',
+  dir: 'E',                          // N, E, S or O — where the robot looks at the start
+  blocks: ['forward', 'repeat'],     // which blocks the palette offers, in this order
+  max: 3,                            // optional hard cap on blocks
+  map: ['..........', 'R..*.*.*.M', '..........']
+}
+```
+
+**Every level carries exactly three batteries.** Two and three stars are unreachable;
+four and one star is hidden for good. The checker enforces the count.
+
+**Always run `node tools/check-levels.js` after touching a map.** It searches for two
+different routes, because the child experiences two different goals: the short way to the
+flag, and the way that also collects all three batteries. A level is broken if either one
+does not exist. Three of the twelve levels shipped broken until it was written — one had
+no goal at all, and *La vuelta completa* had a short cut straight up the inside that made
+its loop pointless.
+
+`max` is what actually teaches the loop. Without a cap a child can always brute-force a
+long corridor with a pile of *avanzar* blocks, which is exactly the habit the level is
+trying to break.
+
+**Where a level has a `max`, put the batteries on the route the pattern itself walks.**
+Getting the loop right then collects all three with no detour, which is the reward for
+seeing the pattern. Asking for a detour under a block cap is asking for three stars the
+limit makes impossible — the checker warns when the battery route costs more than 1.5×
+the direct one on a capped level. Where the level is about reading the map instead, put
+some batteries off the direct path so the detour is the challenge.
+
+## Conventions
+
+- **Code in English, content in Spanish.** Class names, ids, file names, comments and
+  commit messages are English. Every string a child reads is Chilean Spanish.
+- **Text for eight year olds.** Short sentences, verbs they know, and failure messages
+  that say what went wrong rather than that they failed ("El robot chocó con un muro.
+  Revisa por dónde gira." — never "Error" or "Incorrecto").
+- **No hex colours.** Everything resolves through `--rb-*` tokens. A colour that is
+  missing gets added to `~/marca/assets/tokens.css` first, then copied over.
+- **This page uses the "tintas de taller" family**, the pastel side of the brand
+  reserved for material aimed at the children (`~/marca/manual/03-color.md` §3.7). The
+  institutional palette is sober by design, which is right for a school director and
+  wrong for a nine year old. **Text on those tints is always Pizarra, never white** —
+  they are light, and white on them does not clear 2.5:1.
+- **The page is pinned light and must stay that way.** It aliases the raw tokens as
+  `--game-*` in `:root` instead of using the semantic roles (`--rb-fondo`, `--rb-texto`),
+  which flip with `prefers-color-scheme`. A child whose laptop is in dark mode must see
+  the same board as the one projected at the front of the room. Same reasoning as
+  `website`; §3.6 keeps dark mode for projected screens.
+- **Yellow is the reward.** Amarillo Chispa is the batteries, the stars, the robot's
+  antenna, the running block and the levels finished with all three — never a button.
+  *Ejecutar* is Verde Bosque, which also reads as "go".
+- Blocks are coloured by family, like Scratch: movement is Azul Juego, `repetir` is
+  Naranja Juego. Do not give *avanzar* and *girar* different colours — they are the same
+  idea to a child. These children move on to Scratch afterwards, and the colour memory
+  is part of what they take with them.
+- **The blocks are set in Nunito, and only the blocks** (`--game-font-block`). Everything
+  else keeps the brand's own type stack. It is self-hosted rather than loaded from a CDN
+  because the game has to open from a pendrive with no connection — the same reason the
+  scripts are not ES modules.
+  This is the one place where a design decision was deliberately kept out of `~/marca`:
+  the founder chose to keep the font local to the game rather than declare a "workshop
+  typeface" in the manual the way the pastel tints were declared. If a second piece of
+  children's material ever needs it, move it to `~/marca` then rather than copying the
+  `@font-face` across.
+- **Both ways of adding a block have to keep working.** Clicking a palette block appends
+  it; dragging drops it exactly where you want. Dragging is still hard at eight, and
+  clicking is what most children use for the first few sessions.
+
+## The controls
+
+Five buttons, and the split between the last two is the one worth protecting:
+
+- **Ejecutar** (play) runs the program. On a run paused mid-way it carries on from there
+  rather than starting over — `session.resume()`.
+- **Paso** runs exactly one block and waits. This is the debugger: the piece that just
+  ran stays lit in the program and the status line says which step of how many. It is the
+  answer to "my program is wrong and I don't know where".
+- **Detener** stops the robot **where it is**, so the child can look at where it went
+  wrong. It does not move the robot back.
+- **Reiniciar** is what puts the robot at the start.
+- **Rápido / Normal** is the speed toggle.
+
+Step mode is not a separate code path: `Runner.run({manual: true})` is the same machinery
+with the clock switched off, and `step()` drives one tick by hand. Keep it that way — a
+second interpreter for stepping would drift from the real one, and then the debugger
+would lie.
+
+## Design decisions worth keeping
+
+- **Blocks are cut to a puzzle-piece silhouette with `clip-path`** — a notch on top, a
+  bump below, and a negative bottom margin that pulls the next block up until its notch
+  swallows the bump. The look is Scratch's on purpose: it is where these children go
+  next, so the pieces should already feel familiar. Two things follow from `clip-path`:
+  `outline` and `box-shadow` are cut off (the running piece is marked with a
+  `drop-shadow` halo, which follows the silhouette), and the bump has to live *inside*
+  the box, which is what the extra bottom padding is for.
+- **Rounded corners are points, not a radius.** `polygon()` only draws straight lines, so
+  each corner is three extra vertices along the quarter circle, from the `--r1/--r2/--r3`
+  offsets in `:root`. Changing `--piece-radius` rescales them all.
+- **The outline is two nested spans (`.piece` > `.piece-face`), and it has to be two.**
+  CSS applies `clip-path` *after* `filter`, so an element carrying both clips away its
+  own outline — which is exactly what happened on the first attempt, and it renders as no
+  outline at all rather than as an error. The outer span carries the drop-shadows, the
+  inner one the silhouette. They are empty on purpose: put the filter on the block itself
+  and the text gets outlined too.
+- The head and the foot of a `repetir` each drop the drop-shadow facing the body, or a
+  dark line cuts across the middle of the C.
+- Outline colours are `color-mix` of the block colour towards Pizarra, not two more hex
+  values, so they follow the tokens. A browser too old for `color-mix` just loses the
+  outline.
+- **Never put a percentage `padding` on a `.sprite`.** A percentage padding resolves
+  against the *board's* width, not the sprite's, so `padding: 12%` on a battery was wider
+  than a whole cell, collapsed its content box to zero and made every battery invisible
+  while the model still counted them. Padding goes on the inner `<svg>`.
+- The robot is two nested elements: the outer one walks (`translate`), the inner one
+  turns (`rotate`). That is what lets the bump animation mean "forward" as `-Y` in the
+  robot's own rotated frame, whatever direction it is facing.
+- The board floor is checkered in lightness, not in hue. An earlier version alternated
+  Menta and Cielo, and two different colours read as two different terrains.
+- The program is redrawn from the block tree after every edit. Programs are tens of
+  blocks at most, so a full redraw is fast enough and far easier to trust.
+- Drag and drop uses pointer events, not the HTML5 drag-and-drop API, which cannot show
+  an insertion point inside a nested `repeat`.
+- The drop indicator has negative margins that cancel its own height, and containers
+  space their children with margins instead of `gap`. Otherwise inserting the indicator
+  pushes the list down and moves the very block the cursor is measured against, and the
+  insertion point flickers between two positions.
+- `Runner.MAX_STEPS` caps a compiled program at 600 moves. Three nested `repetir 10`
+  blocks are 1000 moves and would otherwise hang the page.
+
+## Pending
+
+- Sound. A step tick, a bump and a small fanfare would help the youngest children, but
+  every laptop in the room playing it at once needs a mute button first.
+- A level editor for the teacher. Today a new level means editing `src/levels.js`, which
+  is fine for whoever reads this file and not for anyone else.
+- Touch support. The drag code uses pointer events and already has `touch-action: none`,
+  so tablets are close, but nothing has been tested on one and the layout is built for a
+  notebook screen.
+- Self-hosted Space Grotesk and Inter as subset `woff2`, same as `website`.

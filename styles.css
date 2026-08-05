@@ -1,0 +1,781 @@
+/* Ruta Robot — all the styles for the game.
+   Colours come from assets/tokens.css. No hex values live here: a colour that is
+   missing is added to ~/marca/assets/tokens.css first and copied over.
+
+   This page uses the "tintas de taller" family (`~/marca/manual/03-color.md` §3.7),
+   the pastel side of the brand reserved for material aimed at the children. The rule
+   that comes with it: text on those tints is always Pizarra, never white — they are
+   light, and white on them does not clear 2.5:1.
+
+   The page is pinned light on purpose. It is projected and played in a classroom, and a
+   child's laptop set to dark mode should not repaint the board (same reason as
+   `website`, §3.6). That is why this file aliases the raw tokens instead of the semantic
+   --rb-fondo / --rb-texto roles, which flip with prefers-color-scheme. */
+
+/* Nunito, self-hosted: rounded and made for children's reading, and the closest thing
+   to how a Scratch block feels. It is a variable font, so this one 39 KB file covers
+   every weight. Only the latin subset ships — the unicode-range below sends anything
+   outside it to the fallback stack instead of downloading more.
+
+   Self-hosted and not from a CDN on purpose: this game has to open from a pendrive in a
+   school with no connection. Licence in assets/fonts/OFL.txt (SIL OFL). */
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('assets/fonts/nunito-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
+:root {
+  /* Blocks only. The rest of the page keeps the brand's own type stack. */
+  --game-font-block: 'Nunito', var(--rb-font-titulo);
+
+  --game-ink: var(--rb-pizarra);
+  --game-ink-soft: var(--rb-pizarra-alta);
+  --game-muted: var(--rb-grafito);
+
+  --game-page: var(--rb-nube);
+  --game-surface: var(--rb-blanco);
+  --game-line: var(--rb-niebla);
+  --game-chrome: var(--rb-azul-taller);
+
+  --game-move: var(--rb-azul-juego);      /* movement blocks */
+  --game-loop: var(--rb-naranja-juego);   /* repeat blocks */
+
+  /* Each piece is outlined in its own colour taken down towards Pizarra. Derived with
+     color-mix instead of two more hand-written hex values, so the outline follows the
+     block colour if the tokens ever change. A browser too old for color-mix simply
+     draws no outline, which is a fine thing to lose. */
+  --edge-move: color-mix(in srgb, var(--rb-azul-juego) 68%, var(--rb-pizarra));
+  --edge-loop: color-mix(in srgb, var(--rb-naranja-juego) 68%, var(--rb-pizarra));
+  --game-wall: var(--rb-piedra);
+  --game-floor: var(--rb-menta);
+  --game-spark: var(--rb-amarillo-chispa);
+  --game-go: var(--rb-verde-bosque);
+
+  --game-topbar: 3.5rem;
+  --game-shadow: 0 1px 2px rgba(18, 24, 29, .1), 0 6px 18px rgba(18, 24, 29, .07);
+
+  /* Puzzle-piece geometry. `notch-top` and `notch-bottom` are the left edge of the
+     bump; they differ only on a `repetir` head, whose bump has to line up with the
+     blocks indented inside it. */
+  --notch-h: 8px;
+  --notch-top: 14px;
+  --notch-bottom: 14px;
+  --piece-radius: 10px;
+
+  /* `polygon()` draws straight lines only, so a rounded corner is three extra points
+     along the quarter circle — at 22.5°, 45° and 67.5°. These are the offsets from the
+     corner, as fractions of the radius: 1-cos(a) and 1-sin(a). Used in pairs, one as x
+     and the other as y, they trace an arc smooth enough that nobody sees the seams. */
+  --r1: calc(var(--piece-radius) * .0761);
+  --r2: calc(var(--piece-radius) * .2929);
+  --r3: calc(var(--piece-radius) * .6173);
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; margin: 0; }
+
+body {
+  display: flex;
+  flex-direction: column;
+  background: var(--game-page);
+  color: var(--game-ink);
+  font-family: var(--rb-font-texto);
+  font-size: var(--rb-text-base);
+  line-height: var(--rb-leading-texto);
+  -webkit-font-smoothing: antialiased;
+}
+
+h2, h3 {
+  font-family: var(--rb-font-titulo);
+  line-height: var(--rb-leading-titulo);
+  margin: 0;
+}
+
+/* ---------- top bar ---------- */
+
+.topbar {
+  flex: none;
+  height: var(--game-topbar);
+  display: flex;
+  align-items: center;
+  gap: var(--rb-space-3);
+  padding: 0 var(--rb-space-3);
+  background: var(--game-chrome);
+  color: var(--rb-blanco);
+}
+
+.brand { display: flex; align-items: center; gap: var(--rb-space-1); }
+
+.brand-mark {
+  width: 2rem;
+  height: 2rem;
+  /* The plate sits on Azul Taller, where the brand's own Pizarra would go muddy. */
+  --game-ink: var(--rb-pizarra);
+  --game-paper: var(--rb-blanco);
+}
+
+.brand-name {
+  font-family: var(--rb-font-titulo);
+  font-size: var(--rb-text-lg);
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+.levels { display: flex; flex-wrap: wrap; gap: .375rem; margin-left: auto; }
+
+.level-btn {
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: var(--rb-radio-sm);
+  background: rgba(255, 255, 255, .18);
+  color: var(--rb-blanco);
+  font-family: var(--rb-font-titulo);
+  font-size: var(--rb-text-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.level-btn:hover:not(:disabled) { background: rgba(255, 255, 255, .34); }
+.level-btn.is-done { background: var(--rb-blanco); color: var(--game-chrome); }
+/* Yellow means reward, so it belongs to the levels finished with all three batteries. */
+.level-btn.is-perfect { background: var(--game-spark); color: var(--game-ink); }
+.level-btn.is-current { outline: 3px solid var(--rb-blanco); outline-offset: 2px; }
+.level-btn.is-locked { opacity: .35; cursor: not-allowed; }
+
+/* ---------- layout ---------- */
+
+.stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 13rem 20rem 1fr;
+  gap: var(--rb-space-2);
+  padding: var(--rb-space-2);
+}
+
+.panel {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rb-space-1);
+  background: var(--game-surface);
+  border-radius: var(--rb-radio);
+  padding: var(--rb-space-2);
+  box-shadow: var(--game-shadow);
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: var(--rb-space-1);
+  font-size: var(--rb-text-lg);
+}
+
+.counter {
+  margin-left: auto;
+  font-family: var(--rb-font-texto);
+  font-size: var(--rb-text-sm);
+  font-weight: 400;
+  color: var(--game-muted);
+}
+
+.counter.is-full { color: var(--game-loop); font-weight: 700; }
+
+/* Battery pips beside the level name: three empty sockets that fill as they are
+   collected. They have to read as "three to find" from across the room, so the empty
+   state is a visible socket, not a faded icon. */
+.batteries { margin-left: auto; display: flex; gap: .375rem; }
+
+.pip-slot {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--game-page);
+  transition: background .25s ease, transform .25s ease;
+}
+
+.pip-slot .pip {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: block;
+  opacity: .45;
+  filter: grayscale(1);
+  transition: opacity .25s ease, filter .25s ease;
+}
+
+.pip-slot.is-on { background: var(--rb-crema); transform: scale(1.06); }
+.pip-slot.is-on .pip { opacity: 1; filter: none; }
+
+/* ---------- blocks ---------- */
+
+.palette { display: flex; flex-direction: column; gap: .625rem; }
+
+/* Palette pieces are loose parts, not a stack: they keep their bump but not the
+   negative margin that makes blocks in the program click into each other. */
+.palette .block { margin-bottom: 0; }
+
+/* Every block is cut to a puzzle-piece silhouette: a notch on top and a bump below,
+   so a stack reads as pieces that click together the way Scratch does. The bump lives
+   inside the box (that is what the extra bottom padding is for) and the negative
+   bottom margin pulls the next block up until its notch swallows it.
+
+   The shape and its colour live on the `.piece` layers behind the text, not on the block
+   itself. A `border` cannot work here — clip-path cuts it off along with everything else
+   — so the outline is four chained drop-shadows that follow the cut silhouette.
+   `z-index: 0` gives the block its own stacking context so the piece stays above the
+   panel background instead of falling behind it. */
+.block {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  width: 100%;
+  padding: .5rem .625rem calc(.5rem + var(--notch-h));
+  margin-bottom: calc(var(--notch-h) * -1);
+  border: 0;
+  background: transparent;
+  --piece-color: var(--game-move);
+  --piece-edge: var(--edge-move);
+  color: var(--game-ink);
+  font-family: var(--game-font-block);
+  font-size: var(--rb-text-base);
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: left;
+  cursor: grab;
+  touch-action: none;              /* pointer events drive the drag, not scrolling */
+  user-select: none;
+}
+
+/* The outline layer. CSS applies clip-path *after* filter, so these have to be two
+   elements: put both on one and the silhouette clips away its own outline. */
+.piece {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  filter:
+    drop-shadow(1.5px 0 0 var(--piece-edge))
+    drop-shadow(-1.5px 0 0 var(--piece-edge))
+    drop-shadow(0 1.5px 0 var(--piece-edge))
+    drop-shadow(0 -1.5px 0 var(--piece-edge));
+}
+
+.piece-face {
+  position: absolute;
+  inset: 0;
+  background: var(--piece-color);
+}
+
+/* The head and the foot are two ends of one C, so neither draws the edge that faces the
+   body — otherwise a dark line cuts across the middle of the piece. */
+.block-head > .piece {
+  filter:
+    drop-shadow(1.5px 0 0 var(--piece-edge))
+    drop-shadow(-1.5px 0 0 var(--piece-edge))
+    drop-shadow(0 -1.5px 0 var(--piece-edge));
+}
+
+.block-foot > .piece {
+  filter:
+    drop-shadow(1.5px 0 0 var(--piece-edge))
+    drop-shadow(-1.5px 0 0 var(--piece-edge))
+    drop-shadow(0 1.5px 0 var(--piece-edge));
+}
+
+.block > .piece > .piece-face {
+  clip-path: polygon(
+    /* top-left corner */
+    0 var(--piece-radius),
+    var(--r1) var(--r3),
+    var(--r2) var(--r2),
+    var(--r3) var(--r1),
+    var(--piece-radius) 0,
+    /* the notch this block's neighbour above drops its bump into */
+    var(--notch-top) 0,
+    calc(var(--notch-top) + 4px) var(--notch-h),
+    calc(var(--notch-top) + 18px) var(--notch-h),
+    calc(var(--notch-top) + 22px) 0,
+    /* top-right corner */
+    calc(100% - var(--piece-radius)) 0,
+    calc(100% - var(--r3)) var(--r1),
+    calc(100% - var(--r2)) var(--r2),
+    calc(100% - var(--r1)) var(--r3),
+    100% var(--piece-radius),
+    /* bottom-right corner */
+    100% calc(100% - var(--notch-h) - var(--piece-radius)),
+    calc(100% - var(--r1)) calc(100% - var(--notch-h) - var(--r3)),
+    calc(100% - var(--r2)) calc(100% - var(--notch-h) - var(--r2)),
+    calc(100% - var(--r3)) calc(100% - var(--notch-h) - var(--r1)),
+    calc(100% - var(--piece-radius)) calc(100% - var(--notch-h)),
+    /* the bump */
+    calc(var(--notch-bottom) + 22px) calc(100% - var(--notch-h)),
+    calc(var(--notch-bottom) + 18px) 100%,
+    calc(var(--notch-bottom) + 4px) 100%,
+    var(--notch-bottom) calc(100% - var(--notch-h)),
+    /* bottom-left corner */
+    var(--piece-radius) calc(100% - var(--notch-h)),
+    var(--r3) calc(100% - var(--notch-h) - var(--r1)),
+    var(--r2) calc(100% - var(--notch-h) - var(--r2)),
+    var(--r1) calc(100% - var(--notch-h) - var(--r3)),
+    0 calc(100% - var(--notch-h) - var(--piece-radius))
+  );
+}
+
+.block-loop { --piece-color: var(--game-loop); --piece-edge: var(--edge-loop); }
+.block:active { cursor: grabbing; }
+.block.is-source:hover { filter: brightness(1.06); }
+
+.block-icon {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.block-label { flex: 1; }
+.block-label-tail { flex: none; }
+
+.block-remove {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(18, 24, 29, .16);
+  color: inherit;
+  font-size: var(--rb-text-sm);
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.block:hover > .block-remove,
+.block:hover > .block-head > .block-remove { opacity: 1; }
+.block-remove:hover { background: rgba(18, 24, 29, .3); }
+
+/* `repeat` is drawn as a head, an indented body and a foot — the C shape of Scratch.
+   The head's bump is pushed right so it lands over the blocks nested inside. */
+.block-container {
+  display: block;
+  padding: 0;
+  margin-bottom: calc(var(--notch-h) * -1);
+  background: transparent;
+}
+
+/* The C is three pieces, so the shape layers belong to the head and the foot. The
+   container itself draws nothing — and must not swallow their `absolute` positioning. */
+.block-container > .piece { display: none; }
+
+.block-head {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem .625rem;
+  background: transparent;
+  font-family: var(--game-font-block);
+  font-weight: 800;
+}
+
+.block-head > .piece > .piece-face {
+  clip-path: polygon(
+    0 var(--piece-radius),
+    var(--r1) var(--r3),
+    var(--r2) var(--r2),
+    var(--r3) var(--r1),
+    var(--piece-radius) 0,
+    var(--notch-top) 0,
+    calc(var(--notch-top) + 4px) var(--notch-h),
+    calc(var(--notch-top) + 18px) var(--notch-h),
+    calc(var(--notch-top) + 22px) 0,
+    calc(100% - var(--piece-radius)) 0,
+    calc(100% - var(--r3)) var(--r1),
+    calc(100% - var(--r2)) var(--r2),
+    calc(100% - var(--r1)) var(--r3),
+    100% var(--piece-radius),
+    100% 100%,
+    0 100%
+  );
+}
+
+/* The body is a plain rectangle, so here the outline can be a real border. Only the
+   sides: the head and the foot close the shape above and below. */
+.block-body {
+  min-height: 2.5rem;
+  padding: .5rem .25rem .25rem 1rem;
+  background: var(--piece-color);
+  border-left: 1.5px solid var(--piece-edge);
+  border-right: 1.5px solid var(--piece-edge);
+  display: flex;
+  flex-direction: column;
+}
+
+.block-foot {
+  position: relative;
+  z-index: 0;
+  height: 1.125rem;
+  background: transparent;
+}
+
+.block-foot > .piece > .piece-face {
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - var(--notch-h) - var(--piece-radius)),
+    calc(100% - var(--r1)) calc(100% - var(--notch-h) - var(--r3)),
+    calc(100% - var(--r2)) calc(100% - var(--notch-h) - var(--r2)),
+    calc(100% - var(--r3)) calc(100% - var(--notch-h) - var(--r1)),
+    calc(100% - var(--piece-radius)) calc(100% - var(--notch-h)),
+    calc(var(--notch-bottom) + 22px) calc(100% - var(--notch-h)),
+    calc(var(--notch-bottom) + 18px) 100%,
+    calc(var(--notch-bottom) + 4px) 100%,
+    var(--notch-bottom) calc(100% - var(--notch-h)),
+    var(--piece-radius) calc(100% - var(--notch-h)),
+    var(--r3) calc(100% - var(--notch-h) - var(--r1)),
+    var(--r2) calc(100% - var(--notch-h) - var(--r2)),
+    var(--r1) calc(100% - var(--notch-h) - var(--r3)),
+    0 calc(100% - var(--notch-h) - var(--piece-radius))
+  );
+}
+
+.block-empty, .program-empty {
+  margin: 0;
+  padding: .25rem .5rem;
+  color: var(--game-ink);
+  font-family: var(--game-font-block);
+  font-size: var(--rb-text-xs);
+  font-weight: 600;
+  opacity: .7;
+}
+
+.program-empty { color: var(--game-muted); opacity: 1; }
+
+.times {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  padding: .125rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .5);
+}
+
+.times-btn {
+  width: 1.375rem;
+  height: 1.375rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .75);
+  color: var(--game-ink);
+  font-size: var(--rb-text-base);
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.times-btn:hover { background: var(--rb-blanco); }
+
+.times-value {
+  min-width: 1.25rem;
+  text-align: center;
+  font-family: var(--rb-font-mono);
+  font-size: var(--rb-text-base);
+  font-weight: 700;
+}
+
+/* ---------- program ---------- */
+
+.program {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: .5rem .5rem calc(.5rem + var(--notch-h));
+  border-radius: var(--rb-radio);
+  background: var(--game-page);
+}
+
+.program.is-locked, .palette.is-locked { opacity: .8; pointer-events: none; }
+.block.is-dragging { opacity: .3; }
+
+/* clip-path cuts off outlines and box-shadows, so the running piece is marked with a
+   drop-shadow halo, which follows the silhouette instead of the box. */
+@keyframes piece-glow {
+  0%, 100% { filter: drop-shadow(0 0 2px var(--game-spark)) drop-shadow(0 0 5px var(--game-spark)); }
+  50% { filter: drop-shadow(0 0 3px var(--game-spark)) drop-shadow(0 0 10px var(--game-spark)) brightness(1.08); }
+}
+
+.block.is-running { animation: piece-glow .9s ease-in-out infinite; }
+.block.is-running > .block-head { filter: brightness(1.08); }
+
+.drag-ghost {
+  position: fixed;
+  z-index: 20;
+  width: 11rem;
+  margin: 0;
+  transform: translate(-50%, -50%) rotate(-3deg);
+  filter: drop-shadow(0 6px 10px rgba(18, 24, 29, .3));
+  pointer-events: none;
+  opacity: .95;
+}
+
+/* Negative margins cancel its own height: the indicator marks a position without
+   taking up space, so nothing below it shifts while the block is being dragged. */
+.drop-line {
+  height: 6px;
+  margin: -3px 0;
+  border-radius: 3px;
+  background: var(--game-ink);
+}
+
+/* ---------- board ---------- */
+
+.board-panel { gap: var(--rb-space-2); }
+
+.board-wrap {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+
+.board {
+  position: relative;
+  --cell: 3rem;
+  width: calc(var(--cell) * var(--cols));
+  height: calc(var(--cell) * var(--rows));
+  padding: 0;
+  border-radius: var(--rb-radio);
+  background: var(--game-floor);
+}
+
+.floor {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), var(--cell));
+  grid-template-rows: repeat(var(--rows), var(--cell));
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+/* One floor colour, checkered only in lightness. Two different hues read as two
+   different terrains, and a child asks whether the blue squares are water. */
+.cell { border: 1px solid rgba(255, 255, 255, .5); }
+.cell-alt { background: rgba(255, 255, 255, .45); }
+
+/* Rounded walls read as building blocks rather than as holes in the floor. */
+.cell-wall {
+  background: var(--game-wall);
+  border: 2px solid var(--game-floor);
+  border-radius: 6px;
+}
+
+.sprite {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--cell);
+  height: var(--cell);
+  transform: translate(calc(var(--x) * var(--cell)), calc(var(--y) * var(--cell)));
+}
+
+.sprite svg { width: 100%; height: 100%; display: block; }
+
+/* Padding goes on the svg, never on the .sprite: a percentage padding resolves against
+   the *board's* width, so 12% on a sprite was wider than a whole cell and collapsed the
+   drawing to nothing. That is how the batteries went missing. */
+.goal svg { padding: 8%; }
+.battery svg { padding: 16%; }
+
+.robot { z-index: 3; transition: transform .3s ease-in-out; }
+
+.robot-inner {
+  width: 100%;
+  height: 100%;
+  transform: rotate(var(--spin, 0deg));
+  transition: transform .3s ease-in-out;
+}
+
+.robot-svg { padding: 4%; }
+.robot-body { fill: var(--game-ink); }
+.robot-wheel { fill: var(--game-ink-soft); }
+.robot-eye { fill: var(--rb-blanco); }
+.robot-mouth { fill: var(--game-ink-soft); }
+.robot-spark { fill: var(--game-spark); }
+.robot-antenna { stroke: var(--game-ink); }
+
+/* -Y in the robot's own rotated frame is always "forward", whatever the heading. */
+@keyframes robot-bump {
+  0%, 100% { transform: rotate(var(--spin, 0deg)) translateY(0); }
+  45% { transform: rotate(var(--spin, 0deg)) translateY(-22%); }
+}
+
+.robot.is-bumping .robot-inner { animation: robot-bump .38s ease-out; }
+
+@keyframes robot-cheer {
+  0%, 100% { transform: rotate(var(--spin, 0deg)) scale(1); }
+  40% { transform: rotate(var(--spin, 0deg)) scale(1.16); }
+}
+
+.robot.is-happy .robot-inner { animation: robot-cheer .5s ease-in-out 2; }
+
+.goal { z-index: 1; }
+.goal-pole { stroke: var(--game-ink); }
+.goal-cloth { fill: var(--game-go); }
+.goal.is-reached .goal-cloth { fill: var(--game-spark); }
+
+.battery { z-index: 2; transition: transform .25s ease, opacity .25s ease; }
+.battery-body { fill: var(--game-spark); }
+.battery-cap { fill: var(--game-ink); }
+.battery-bolt { fill: var(--game-ink); }
+
+.battery.is-taken {
+  transform: translate(calc(var(--x) * var(--cell)), calc(var(--y) * var(--cell))) scale(.2);
+  opacity: 0;
+}
+
+/* ---------- controls ---------- */
+
+.controls { display: flex; gap: var(--rb-space-1); flex-wrap: wrap; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: .625rem 1rem;
+  border: 2px solid var(--game-line);
+  border-radius: 999px;
+  background: var(--game-surface);
+  color: var(--game-ink);
+  font-family: var(--rb-font-titulo);
+  font-size: var(--rb-text-base);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) { border-color: var(--game-ink); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.btn-icon { width: 1.125rem; height: 1.125rem; flex: none; fill: currentColor; }
+#stop-btn:not(:disabled) .btn-icon { fill: var(--rb-naranja-juego); }
+/* The reset arrow is drawn as a stroke, and the fill above would flood the arc. */
+#reset-btn .btn-icon { fill: none; }
+
+.btn-run {
+  flex: 1;
+  background: var(--game-go);
+  border-color: var(--game-go);
+  color: var(--rb-blanco);
+}
+
+.btn-run:hover:not(:disabled) { filter: brightness(1.1); border-color: var(--game-go); }
+
+.btn-quiet {
+  align-self: flex-start;
+  padding: .375rem .75rem;
+  border-color: transparent;
+  font-size: var(--rb-text-sm);
+  color: var(--game-muted);
+}
+
+.status {
+  min-height: 2.75rem;
+  margin: 0;
+  padding: .5rem .75rem;
+  border-radius: var(--rb-radio);
+  background: var(--game-page);
+  color: var(--game-muted);
+  font-size: var(--rb-text-sm);
+}
+
+.status-warn { background: var(--rb-durazno); color: var(--game-ink); font-weight: 600; }
+.status-win { background: var(--rb-menta); color: var(--game-ink); font-weight: 600; }
+
+/* ---------- hint ---------- */
+
+.hint {
+  margin-top: auto;
+  padding: var(--rb-space-1);
+  border-radius: var(--rb-radio);
+  background: var(--rb-crema);
+}
+
+.hint-title {
+  font-size: var(--rb-text-sm);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--game-muted);
+}
+
+.hint-text { margin: .25rem 0 0; font-size: var(--rb-text-sm); }
+
+/* ---------- win dialog ---------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: var(--rb-space-2);
+  background: rgba(18, 24, 29, .5);
+}
+
+.overlay[hidden] { display: none; }
+
+.dialog {
+  width: min(26rem, 100%);
+  padding: var(--rb-space-4);
+  border-radius: var(--rb-radio);
+  background: var(--game-surface);
+  box-shadow: var(--game-shadow);
+  text-align: center;
+}
+
+.dialog-title { font-size: var(--rb-text-2xl); }
+
+.stars { display: flex; justify-content: center; gap: .5rem; margin: var(--rb-space-2) 0; }
+.star { width: 3rem; height: 3rem; fill: var(--game-line); }
+.star.is-on { fill: var(--game-spark); }
+
+.dialog-text { margin: 0 0 var(--rb-space-3); color: var(--game-muted); }
+.dialog-actions { display: flex; gap: var(--rb-space-1); justify-content: center; }
+
+/* ---------- narrow screens ---------- */
+
+@media (max-width: 60rem) {
+  body { height: auto; }
+  .stage { grid-template-columns: 1fr; }
+  .palette { flex-direction: row; flex-wrap: wrap; }
+  .palette .block { width: auto; flex: 1 1 8rem; }
+  .program { min-height: 12rem; }
+  .board-wrap { min-height: 16rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .robot, .robot-inner, .battery, .pip-slot { transition-duration: .01ms; }
+  .robot.is-bumping .robot-inner,
+  .robot.is-happy .robot-inner,
+  .block.is-running { animation: none; }
+  .block.is-running { filter: drop-shadow(0 0 4px var(--game-spark)); }
+}

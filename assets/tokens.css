@@ -1,0 +1,91 @@
+/* robotes.org — tokens de marca v1
+   Fuente de verdad de color, tipografía y espaciado.
+   Copiar este archivo a cualquier repo nuevo antes de escribir CSS propio. */
+
+:root {
+  /* --- Color: marca --- */
+  --rb-pizarra: #2c3742;      /* tinta institucional: titulares, texto, fondos oscuros */
+  --rb-pizarra-alta: #38434f; /* superficie elevada sobre Pizarra: tarjetas, degradados, barras */
+  --rb-azul-taller: #15628f;  /* primario de acción: links, botones, énfasis */
+  --rb-amarillo-chispa: #ffc53d; /* acento. Nunca como texto sobre blanco */
+  --rb-verde-bosque: #1e7a5a; /* apoyo: estados de éxito, naturaleza, datos */
+
+  /* --- Color: neutros --- */
+  --rb-blanco: #ffffff;
+  --rb-papel: #f5f6f4;   /* fondo cálido por defecto de documentos */
+  --rb-niebla: #e3e6e4;  /* bordes, separadores, superficies */
+  --rb-grafito: #5b6670; /* texto secundario sobre fondos claros */
+  --rb-bruma: #c3cad1;   /* texto secundario sobre fondos oscuros */
+  --rb-carbon: #12181d;  /* texto sobre fondos claros cuando no se usa azul */
+
+  /* --- Color: tintas de taller ---
+     Sólo para material dirigido a los niños del taller: el juego, fichas de
+     actividad, diplomas. No entran en material institucional ni comercial.
+     Son la paleta de marca subida de luz, no colores nuevos: el azul sigue
+     siendo el del lago y el naranja es el amarillo de la chispa encendido.
+     Todas están medidas para llevar texto Pizarra encima (ver manual §3.7). */
+  --rb-azul-juego: #62aee6;    /* elementos que el niño manipula: bloques de movimiento */
+  --rb-naranja-juego: #ef8b3c; /* segunda familia de piezas: repeticiones, control */
+  --rb-piedra: #5f7183;        /* obstáculos y muros; Pizarra es demasiado dura para un juego */
+
+  /* Fondos pastel. Nunca llevan texto pequeño encima que no sea Pizarra o Grafito. */
+  --rb-cielo: #dceefa;
+  --rb-menta: #daf0e5;
+  --rb-crema: #fff3d6;
+  --rb-durazno: #ffe3ce;
+  --rb-nube: #eef4f8;
+
+  /* --- Roles semánticos (usar estos en el CSS de cada proyecto) --- */
+  --rb-fondo: var(--rb-blanco);
+  --rb-fondo-alt: var(--rb-papel);
+  --rb-texto: var(--rb-pizarra);
+  --rb-texto-suave: var(--rb-grafito);
+  --rb-borde: var(--rb-niebla);
+  --rb-link: var(--rb-azul-taller);
+  --rb-acento: var(--rb-amarillo-chispa);
+
+  /* --- Tipografía --- */
+  --rb-font-titulo: "Space Grotesk", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --rb-font-texto: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --rb-font-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+
+  /* Escala tipográfica (razón 1.25, base 16px) */
+  --rb-text-xs: 0.8rem;
+  --rb-text-sm: 0.9rem;
+  --rb-text-base: 1rem;
+  --rb-text-lg: 1.25rem;
+  --rb-text-xl: 1.563rem;
+  --rb-text-2xl: 1.953rem;
+  --rb-text-3xl: 2.441rem;
+  --rb-text-4xl: 3.052rem;
+
+  --rb-leading-titulo: 1.15;
+  --rb-leading-texto: 1.6;
+
+  /* --- Espaciado (base 8px) --- */
+  --rb-space-1: 0.5rem;
+  --rb-space-2: 1rem;
+  --rb-space-3: 1.5rem;
+  --rb-space-4: 2rem;
+  --rb-space-6: 3rem;
+  --rb-space-8: 4rem;
+
+  /* --- Forma --- */
+  --rb-radio: 10px;      /* mismo radio que la cabeza del isotipo */
+  --rb-radio-sm: 6px;
+  --rb-borde-ancho: 1px;
+  --rb-medida: 68ch;     /* ancho máximo de línea de lectura */
+}
+
+/* Modo oscuro: sólo para pantallas de proyección y presentaciones.
+   Los documentos impresos usan siempre el modo claro. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --rb-fondo: var(--rb-pizarra);
+    --rb-fondo-alt: var(--rb-pizarra-alta);
+    --rb-texto: #eef2f5;
+    --rb-texto-suave: var(--rb-bruma);
+    --rb-borde: #45515d;
+    --rb-link: #7cc0e8; /* el azul taller no tiene contraste suficiente sobre pizarra */
+  }
+}
