@@ -310,7 +310,21 @@ Things that are easy to get wrong:
   pulls the three apart and the flag reads as three loose slabs. It waves and the
   batteries sparkle, and keeping those two apart is worth something: the flag is where
   you are going, the batteries are what you pick up on the way.
-- The animation loop runs only while something is moving and stops itself afterwards.
+- **Rovi is never quite still**: he breathes, his antenna trails half a beat behind him,
+  and every few seconds he blinks. Three rules came out of building it:
+  - **The idle animation may not touch the yaw.** Which way the robot faces is
+    information a child reads before pressing play, and a robot that glances about is a
+    robot whose heading you have to check twice.
+  - The eyes are their own item so they can go out on their own, and **the mouth stays
+    with the body**. A face that closes its eyes is blinking; a face that loses its mouth
+    as well has switched off.
+  - The antenna only ever dips. Springing it upwards lifts the foot of its own mast out
+    of the head it is planted in.
+- **The animation loop no longer stops while a level is open.** It used to: everything
+  moved, then settled, then the loop shut down. Between the batteries, the flag and Rovi
+  there is now always something in motion, so what protects the machine is `IDLE_FPS` and
+  nothing else. If the board ever needs to be made cheaper, that is the dial — and the
+  cost has still not been measured on a real school notebook.
 - **Reaching the flag breaks it into cubes.** The flag lifts off and is gone in a fifth
   of a second, and two dozen small boxes are thrown out and up from where it stood — cyan
   because that is what the flag was, amber because that is what a reward is everywhere

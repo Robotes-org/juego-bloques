@@ -36,6 +36,13 @@ var Board = (function () {
      get. MOTE_MS is how long one mote takes to climb and fade. */
   var MOTES = 3, MOTE_MS = 1800, SPIN_MS = 5200, BOB_MS = 1700;
 
+  /* And Rovi, who is alive whether or not anyone is asking him to do something: he
+     breathes, his antenna answers half a beat late, and every few seconds he blinks.
+     The blink is the one that does the work — a face with eyes that never close is a
+     drawing of a face. It is kept short: long enough to see, too short to look like the
+     robot has stopped working. */
+  var BREATH_MS = 2600, BLINK_EVERY = 3800, BLINK_MS = 130;
+
   /* And one ripple down the pennant. Slower than a real flag on purpose: at anything
      brisker the steps read as flickering rather than as cloth. */
   var WAVE_MS = 1600;
@@ -157,9 +164,13 @@ var Board = (function () {
 
     var shadowItem = { model: Models.shadow(), x: 0, z: 0, y: 0, unlit: true, alpha: 0.22 };
     var robotItem = { model: Models.ROVI, x: 0, z: 0, y: Models.GROUND, yaw: 0 };
+    /* Both ride with the robot — same square, same heading — and are only separate so
+       that the eyes can go out on their own and the antenna can lag behind. */
+    var eyeItem = { model: Models.ROVI_EYES, x: 0, z: 0, y: Models.GROUND, yaw: 0 };
+    var antennaItem = { model: Models.ROVI_ANTENNA, x: 0, z: 0, y: Models.GROUND, yaw: 0 };
 
     var props = [goalItem].concat(clothItems, batteryItems);
-    var world = ground.concat(props, motes, [shadowItem, robotItem]);
+    var world = ground.concat(props, motes, [shadowItem, robotItem, eyeItem, antennaItem]);
     var sparks = [];      /* what is left of the flag, while it is still in the air */
 
     /* ---------- state ---------- */
@@ -364,11 +375,42 @@ var Board = (function () {
       var px = wx(gx) + Math.sin(rad) * shove * TILE;
       var pz = wz(gy) - Math.cos(rad) * shove * TILE;
 
+      /* Rovi is never quite still. He breathes, his antenna answers half a beat behind
+         him, and every few seconds he blinks. None of it moves him off his square: the
+         heading is information a child reads, so the idle animation is not allowed to
+         touch the yaw, and the breath is well under a tenth of a tile. */
+      var breath = 0, blink = false, lean = 0, drift = 0;
+      if (!reduced && dropAlpha >= 1) {
+        shimmering = true;
+        var bt = now / BREATH_MS * Math.PI * 2;
+        breath = Math.sin(bt) * 0.55;
+        // The antenna trails the breath and only ever dips: springing upwards would lift
+        // the foot of its own mast out of the head it is planted in.
+        drift = (Math.sin(bt - 0.9) - 1) * 0.5;
+        lean = Math.sin(bt - 0.9) * 0.6;
+        blink = (now % BLINK_EVERY) < BLINK_MS;
+      }
+
       robotItem.x = px;
       robotItem.z = pz;
       robotItem.yaw = yaw;
-      robotItem.lift = dropLift + hop;
+      robotItem.lift = dropLift + hop + breath;
       robotItem.alpha = dropAlpha;
+
+      eyeItem.x = px;
+      eyeItem.z = pz;
+      eyeItem.yaw = yaw;
+      eyeItem.lift = robotItem.lift;
+      eyeItem.alpha = blink ? 0 : dropAlpha;
+
+      // The sway is worked out in Rovi's own frame and turned into the world's, the same
+      // way the bump is, so the antenna leans across his shoulders whatever way he faces.
+      antennaItem.x = px + Math.cos(rad) * lean;
+      antennaItem.z = pz + Math.sin(rad) * lean;
+      antennaItem.yaw = yaw;
+      antennaItem.lift = robotItem.lift + drift;
+      antennaItem.alpha = dropAlpha;
+
       shadowItem.x = px;
       shadowItem.z = pz;
       shadowItem.alpha = dropAlpha * (0.22 - hop * 0.012);
