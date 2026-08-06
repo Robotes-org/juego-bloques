@@ -52,17 +52,31 @@ var Models = (function () {
      landed right beside the island's own soil rim, and the two browns read as one broken
      step in the edge rather than as a flag standing on something. Blue cannot be
      mistaken for the ground it stands on, and it belongs to the flag above it. */
-  function flag() {
+  function post() {
     return [
       box(-10, 10, GROUND, GROUND + 1.5, -10, 10, 'deep'),
-      box(-1.5, 1.5, GROUND, GROUND + TALL, -1.5, 1.5, 'dark'),
-      box(1.5, 15, GROUND + 15, GROUND + TALL, -2, 2, 'glow'),
-      box(1.5, 11, GROUND + 10, GROUND + 15, -2, 2, 'glow'),
-      // All three steps in the one cyan. The lowest used to be the darker blue for a bit
-      // of shading, and once the pad below it became that same blue the step sank into
-      // it and read as a fin growing out of the ground.
-      box(1.5, 7, GROUND + 5, GROUND + 10, -2, 2, 'glow')
+      box(-1.5, 1.5, GROUND, GROUND + TALL, -1.5, 1.5, 'dark')
     ];
+  }
+
+  /* The cloth is three separate pieces rather than part of the flag, and each one is a
+     box centred on its own origin, because the board moves them one at a time: a ripple
+     is the same shape lagging a little further behind the higher one. All three in the
+     one cyan — the lowest used to be a darker blue for a bit of shading, and once the pad
+     below it became that same blue the step sank into it and read as a fin growing out
+     of the ground.
+
+     The steps are what the flag is: a pennant cut in three rather than on the diagonal,
+     because finer stairs turn into a feather once a tile is small. */
+  var CLOTH = [
+    { len: 13.5, tall: 7, x: 8.25, y: GROUND + 18.5 },
+    { len: 9.5, tall: 5, x: 6.25, y: GROUND + 12.5 },
+    { len: 5.5, tall: 5, x: 4.25, y: GROUND + 7.5 }
+  ];
+
+  function cloth(step) {
+    var s = CLOTH[step];
+    return [box(-s.len / 2, s.len / 2, -s.tall / 2, s.tall / 2, -2, 2, 'glow')];
   }
 
   /* One cube, for the burst the flag leaves behind when the robot reaches it. The colour
@@ -134,5 +148,6 @@ var Models = (function () {
   var ROVI_TOP = 26.5;
 
   return { TILE: TILE, GROUND: GROUND, WALL: WALL, ROVI: ROVI, ROVI_TOP: ROVI_TOP,
-    tile: tile, wall: wall, flag: flag, battery: battery, shadow: shadow, spark: spark };
+    tile: tile, wall: wall, post: post, cloth: cloth, CLOTH: CLOTH,
+    battery: battery, shadow: shadow, spark: spark };
 })();

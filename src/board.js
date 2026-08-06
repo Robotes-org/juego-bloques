@@ -36,6 +36,10 @@ var Board = (function () {
      get. MOTE_MS is how long one mote takes to climb and fade. */
   var MOTES = 3, MOTE_MS = 1800, SPIN_MS = 5200, BOB_MS = 1700;
 
+  /* And one ripple down the pennant. Slower than a real flag on purpose: at anything
+     brisker the steps read as flickering rather than as cloth. */
+  var WAVE_MS = 1600;
+
   /* The shimmer never stops, so unlike everything else on this board it would hold the
      animation loop open for as long as a level is on screen. It gets its own slower
      clock: a full redraw is the whole board, and a child staring at a puzzle does not
@@ -111,7 +115,14 @@ var Board = (function () {
       return (a.gx + a.gy) - (b.gx + b.gy) || a.gx - b.gx;
     }).forEach(function (t, i) { t.turn = i; });
 
-    var goalItem = { model: Models.flag(), x: wx(g.goal.x), z: wz(g.goal.y), y: 0 };
+    /* The flag is the pole and its pad; the cloth above it is three more items, one per
+       step, so that each can lag behind the one above it and the pennant ripples. */
+    var goalItem = { model: Models.post(), x: wx(g.goal.x), z: wz(g.goal.y), y: 0 };
+
+    var clothItems = Models.CLOTH.map(function (s, i) {
+      return { model: Models.cloth(i), home: s, step: i,
+        x: goalItem.x + s.x, z: goalItem.z, y: s.y };
+    });
 
     var batteryItems = g.batteries.map(function (b, i) {
       return { model: Models.battery(), x: wx(b.x), z: wz(b.y), y: 0, gx: b.x, gy: b.y,
@@ -147,7 +158,7 @@ var Board = (function () {
     var shadowItem = { model: Models.shadow(), x: 0, z: 0, y: 0, unlit: true, alpha: 0.22 };
     var robotItem = { model: Models.ROVI, x: 0, z: 0, y: Models.GROUND, yaw: 0 };
 
-    var props = [goalItem].concat(batteryItems);
+    var props = [goalItem].concat(clothItems, batteryItems);
     var world = ground.concat(props, motes, [shadowItem, robotItem]);
     var sparks = [];      /* what is left of the flag, while it is still in the air */
 
@@ -202,7 +213,8 @@ var Board = (function () {
 
     function frame() {
       var now = performance.now();
-      var busy = false;
+      var busy = false;        /* something is really moving: draw every frame we can */
+      var shimmering = false;  /* only the endless idle motion: draw on the slow clock */
 
       ground.forEach(function (t) {
         var at = builtAt + t.turn * BUILD_STEP;
@@ -227,12 +239,37 @@ var Board = (function () {
       }
       props.forEach(function (p) { p.lift = dropLift; p.alpha = dropAlpha; });
 
+      /* The pennant ripples: each step swings out of the plane of the cloth a little
+         later than the one above it, which is the whole of what makes a flag look like
+         cloth rather than like a sign. The free end of each step moves furthest, so the
+         swing grows with the step's own length. */
+      if (!reduced && !goalAt && dropAlpha >= 1) {
+        shimmering = true;
+        clothItems.forEach(function (c) {
+          /* Small numbers on purpose. A step is only four units thick, so a swing much
+             wider than this — or a longer lag between one step and the next — pulls the
+             three of them apart and the pennant reads as three loose slabs instead of
+             one piece of cloth. */
+          var t = now / WAVE_MS * Math.PI * 2 - c.step * 0.55;
+          var swing = c.home.len * 0.09;
+          c.z = goalItem.z + Math.sin(t) * swing;
+          c.x = goalItem.x + c.home.x - Math.abs(Math.sin(t)) * swing * 0.35;
+          c.y = c.home.y + Math.cos(t) * 0.7;
+        });
+      }
+
       /* The flag does not turn a colour when it is reached any more: it lifts off and is
          gone inside a fifth of a second, and what stays is the burst. */
       if (goalAt) {
         var gk = reduced ? 1 : (now - goalAt) / FLAG_MS;
-        if (gk >= 1) goalItem.alpha = 0;
-        else { busy = true; goalItem.alpha = 1 - gk; goalItem.lift = dropLift + 14 * gk; }
+        var fade = gk >= 1 ? 0 : 1 - gk;
+        if (gk < 1) busy = true;
+        goalItem.alpha = fade;
+        goalItem.lift = dropLift + 14 * Math.min(1, gk);
+        clothItems.forEach(function (c) {
+          c.alpha = fade;
+          c.lift = goalItem.lift;
+        });
       }
 
       if (sparks.length) {
@@ -256,7 +293,6 @@ var Board = (function () {
       /* A collected battery lifts off its square and fades, which reads as taken rather
          than as a drawing that disappeared. The ones still out there turn on the spot
          and breathe, so that the eye goes to them. */
-      var shimmering = false;
       batteryItems.forEach(function (b) {
         if (b.takenAt) {
           var k = reduced ? 1 : (now - b.takenAt) / TAKE_MS;
@@ -418,6 +454,13 @@ var Board = (function () {
         sparks = [];
         goalItem.alpha = 1;
         goalItem.lift = 0;
+        clothItems.forEach(function (c) {
+          c.alpha = 1;
+          c.lift = 0;
+          c.x = goalItem.x + c.home.x;
+          c.z = goalItem.z;
+          c.y = c.home.y;
+        });
         batteryItems.forEach(function (b) { b.takenAt = 0; b.alpha = 1; b.lift = 0; });
         kick();
       },

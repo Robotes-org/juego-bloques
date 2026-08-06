@@ -40,7 +40,7 @@ notebook del taller.
   los botones **−** y **+** se cambia cuántas.
 - **Las pilas:** giran despacio y sueltan chispas mientras están en el tablero, para que
   el niño las vea de lejos. Al pasarles por encima estallan en un puñado de cubitos.
-- **La bandera:** cuando el robot la toca, la bandera se deshace en un montón de cubos
+- **La bandera:** ondea sola mientras espera. Cuando el robot la toca, se deshace en un montón de cubos
   que salen volando. Vale la pena dejar que los niños lo vean antes de apretar
   "Siguiente".
 - **▶ Ejecutar:** el robot sigue el programa completo. El bloque que está corriendo se

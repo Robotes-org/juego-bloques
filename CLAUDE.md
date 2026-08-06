@@ -303,6 +303,13 @@ Things that are easy to get wrong:
     every frame it can. This was reasoned about rather than measured: headless Chrome
     does not produce real animation frames, so the actual cost on a school notebook is
     still unverified. **Check it on the oldest laptop in the room before shipping.**
+- **The pennant ripples**, which is why the cloth is three separate items and not part
+  of the flag: each step swings out of the plane of the cloth a little later than the one
+  above it, and that lag is the whole of what makes cloth look like cloth. The numbers are
+  deliberately small — a step is only four units thick, so a wider swing or a longer lag
+  pulls the three apart and the flag reads as three loose slabs. It waves and the
+  batteries sparkle, and keeping those two apart is worth something: the flag is where
+  you are going, the batteries are what you pick up on the way.
 - The animation loop runs only while something is moving and stops itself afterwards.
 - **Reaching the flag breaks it into cubes.** The flag lifts off and is gone in a fifth
   of a second, and two dozen small boxes are thrown out and up from where it stood — cyan
