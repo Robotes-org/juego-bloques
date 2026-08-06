@@ -287,6 +287,22 @@ Things that are easy to get wrong:
 - `prefers-reduced-motion` is checked in JS and switches off the build, the walk and the
   turn. CSS cannot reach inside a canvas, so nothing about the board appears in the media
   query in `styles.css`.
+- **The batteries never stop moving**, and they are the only thing on the board that
+  does not. Each turns slowly, breathes up and down, and trails three motes that circle,
+  climb and fade. The whole motion is a function of the clock — nothing is spawned,
+  nothing is collected, and a mote that is a frame late simply appears where it should
+  have been.
+  - The motes are drawn `unlit`. Shaded by the same light as the ground they look like
+    chips of something lying about; at full colour on every face they read as giving off
+    light. That is the only reason the flag has `unlit` too.
+  - They orbit wide enough to clear the battery itself. Drawn against the amber body a
+    mote is a chip stuck to it; only out over the grass is it a spark.
+  - **A shimmer that never ends would hold the animation loop open for as long as a level
+    is on screen**, and every frame is a full repaint of the board. So the shimmer alone
+    draws on a slower clock (`IDLE_FPS`) while anything really moving still draws on
+    every frame it can. This was reasoned about rather than measured: headless Chrome
+    does not produce real animation frames, so the actual cost on a school notebook is
+    still unverified. **Check it on the oldest laptop in the room before shipping.**
 - The animation loop runs only while something is moving and stops itself afterwards.
 - **Reaching the flag breaks it into cubes.** The flag lifts off and is gone in a fifth
   of a second, and two dozen small boxes are thrown out and up from where it stood — cyan

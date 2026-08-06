@@ -38,6 +38,8 @@ notebook del taller.
 - **Mover o sacar un bloque:** arrástralo. Si lo sueltas fuera del programa, se borra.
 - **Repetir:** los bloques que van adentro del *repetir* se ejecutan varias veces. Con
   los botones **−** y **+** se cambia cuántas.
+- **Las pilas:** giran despacio y sueltan chispas mientras están en el tablero, para que
+  el niño las vea de lejos. Al pasarles por encima estallan en un puñado de cubitos.
 - **La bandera:** cuando el robot la toca, la bandera se deshace en un montón de cubos
   que salen volando. Vale la pena dejar que los niños lo vean antes de apretar
   "Siguiente".
