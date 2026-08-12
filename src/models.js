@@ -11,6 +11,8 @@ var Models = (function () {
   'use strict';
 
   var box = Voxel.box;
+  var decal = Voxel.decal;
+  var FRONT = [0, 0, -1];   /* the face Rovi's screen, eyes and mouth are stuck onto */
 
   var TILE = 26;        /* one square of the level map */
   var SOIL = 7;         /* how thick the ground block is */
@@ -103,9 +105,32 @@ var Models = (function () {
     return [box(-9, 9, GROUND + 0.1, GROUND + 0.2, -9, 9, 'dark')];
   }
 
-  /* Rovi, the rover of the concept art. Forward is -z and he stands on y = GROUND.
-     Reading order is roughly bottom to top: wheels, chassis, neck, head, antenna. */
-  var ROVI = [
+  /* The head, and the dark screen inset into the front of it. Both are named because the
+     face is built on them: the screen is stuck to the head and the eyes and the mouth are
+     stuck to the screen, and a decal has to be able to point at what it is stuck to.
+     See Voxel.decal for why the face cannot simply be a pile of boxes like the rest. */
+  var HEAD = box(-7, 7, 13, 20.5, -5.5, 5.5, 'shell');
+  var SCREEN = decal(HEAD, -5.6, 5.6, 14.3, 19.6, -6.2, -5.5, 'screen', FRONT);
+  /* The smile is narrow and sits low, with a clear band of dark screen between it and the
+     eyes. Until the sorting above was fixed nobody had ever seen it — the screen painted
+     over it from every angle — and the first sight of it was a face with its mouth in its
+     eyes, because at the size a tile is drawn a gap of half a unit is under one pixel. */
+  var MOUTH = decal(SCREEN, -2, 2, 14.9, 15.6, -6.5, -6.2, 'glow', FRONT);
+
+  /* The eyes, given the slot they fill: wide open, or the slit that is a blink. The
+     robot has two whole models rather than an eye that can be switched off, because
+     closing to a line reads as an eyelid while a face that loses its eyes reads as a
+     face that lost its eyes. The mouth stays put through it, for the same reason. */
+  function eyes(y0, y1) {
+    return [
+      decal(SCREEN, -4.3, -1.3, y0, y1, -6.5, -6.2, 'glow', FRONT),
+      decal(SCREEN, 1.3, 4.3, y0, y1, -6.5, -6.2, 'glow', FRONT)
+    ];
+  }
+
+  /* Rovi, the rover of the concept art, without his eyes. Forward is -z and he stands on
+     y = GROUND. Reading order is roughly bottom to top: wheels, chassis, neck, head. */
+  var BODY = [
     /* Four wheels with a gold hub bolted to the outside of each. They stand proud of the
        chassis by a good two units: tucked under it they vanish at this camera angle, and
        a rover with no visible wheels is a box. */
@@ -119,14 +144,13 @@ var Models = (function () {
     box(-4, 4, 6, 9.5, -8.7, -8, 'panel'),
     box(-7.7, -7, 6, 9, -2, 2, 'gold'), box(7, 7.7, 6, 9, -2, 2, 'gold'),
 
-    /* neck and head */
+    /* neck, head, and the face on the front of it. The screen has to come after the head
+       and before the mouth: a decal borrows the place in the queue of the box it is stuck
+       to, so its host has to have been given one first. */
     box(-2.5, 2.5, 11, 13, -2.5, 2.5, 'dark'),
-    box(-7, 7, 13, 20.5, -5.5, 5.5, 'shell'),
-
-    /* the face: a dark screen inset into the front of the head, with the eyes and the
-       mouth standing a hair proud of it so they catch their own light */
-    box(-5.6, 5.6, 14.3, 19.6, -6.2, -5.5, 'screen'),
-    box(-2.6, 2.6, 14.8, 15.8, -6.5, -6.2, 'glow'),
+    HEAD,
+    SCREEN,
+    MOUTH,
 
     /* A cyan strip laid across the top of the head, near the front edge. It is not on
        the concept sheet and it is the one part of the model that is here for the game
@@ -136,20 +160,16 @@ var Models = (function () {
     box(-4.4, 4.4, 20.5, 20.9, -4.6, -2.2, 'glow')
   ];
 
-  /* The eyes and the antenna are separate so the board can move them on their own while
-     they ride along with the rest of the robot: the eyes go out for a moment when Rovi
-     blinks, and the antenna answers his breathing half a beat late. Both are still in
-     the robot's own coordinates, so whoever draws them has to give them the robot's
-     position and heading — see the idle animation in board.js.
+  /* Rovi with his eyes open, and Rovi mid-blink. The board swaps one model for the other
+     for a tenth of a second every few seconds — see the idle animation in board.js. */
+  var ROVI = BODY.concat(eyes(16.8, 18.6));
+  var ROVI_BLINK = BODY.concat(eyes(17.5, 17.9));
 
-     The mouth stays with the body. A face that closes its eyes is blinking; a face that
-     loses its mouth as well has switched off. */
-  var ROVI_EYES = [
-    box(-4.3, -1.3, 16.2, 18.4, -6.5, -6.2, 'glow'),
-    box(1.3, 4.3, 16.2, 18.4, -6.5, -6.2, 'glow')
-  ];
+  /* The antenna is a separate item, not part of the model, because it answers Rovi's
+     breathing half a beat late and has to be able to move on its own. It is still in his
+     coordinates, so whoever draws it has to give it his position and heading.
 
-  /* Set towards the back the way the concept draws it. The stalk comes with it: swaying
+     Set towards the back the way the concept draws it. The stalk comes with it: swaying
      the tip alone would leave it floating off the end of its own mast. */
   var ROVI_ANTENNA = [
     box(-0.6, 0.6, 20.5, 24, 3, 4.2, 'dark'),
@@ -160,7 +180,7 @@ var Models = (function () {
      board has to leave room for when it works out how big a cell can be. */
   var ROVI_TOP = 26.5;
 
-  return { TILE: TILE, GROUND: GROUND, WALL: WALL, ROVI: ROVI, ROVI_EYES: ROVI_EYES, ROVI_ANTENNA: ROVI_ANTENNA, ROVI_TOP: ROVI_TOP,
+  return { TILE: TILE, GROUND: GROUND, WALL: WALL, ROVI: ROVI, ROVI_BLINK: ROVI_BLINK, ROVI_ANTENNA: ROVI_ANTENNA, ROVI_TOP: ROVI_TOP,
     tile: tile, wall: wall, post: post, cloth: cloth, CLOTH: CLOTH,
     battery: battery, shadow: shadow, spark: spark };
 })();

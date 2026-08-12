@@ -164,13 +164,12 @@ var Board = (function () {
 
     var shadowItem = { model: Models.shadow(), x: 0, z: 0, y: 0, unlit: true, alpha: 0.22 };
     var robotItem = { model: Models.ROVI, x: 0, z: 0, y: Models.GROUND, yaw: 0 };
-    /* Both ride with the robot — same square, same heading — and are only separate so
-       that the eyes can go out on their own and the antenna can lag behind. */
-    var eyeItem = { model: Models.ROVI_EYES, x: 0, z: 0, y: Models.GROUND, yaw: 0 };
+    /* The antenna rides with the robot — same square, same heading — and is only its own
+       item so that it can lag half a beat behind him. */
     var antennaItem = { model: Models.ROVI_ANTENNA, x: 0, z: 0, y: Models.GROUND, yaw: 0 };
 
     var props = [goalItem].concat(clothItems, batteryItems);
-    var world = ground.concat(props, motes, [shadowItem, robotItem, eyeItem, antennaItem]);
+    var world = ground.concat(props, motes, [shadowItem, robotItem, antennaItem]);
     var sparks = [];      /* what is left of the flag, while it is still in the air */
 
     /* ---------- state ---------- */
@@ -391,17 +390,13 @@ var Board = (function () {
         blink = (now % BLINK_EVERY) < BLINK_MS;
       }
 
+      // A blink is a whole second model, with the eyes closed to a line. See models.js.
+      robotItem.model = blink ? Models.ROVI_BLINK : Models.ROVI;
       robotItem.x = px;
       robotItem.z = pz;
       robotItem.yaw = yaw;
       robotItem.lift = dropLift + hop + breath;
       robotItem.alpha = dropAlpha;
-
-      eyeItem.x = px;
-      eyeItem.z = pz;
-      eyeItem.yaw = yaw;
-      eyeItem.lift = robotItem.lift;
-      eyeItem.alpha = blink ? 0 : dropAlpha;
 
       // The sway is worked out in Rovi's own frame and turned into the world's, the same
       // way the bump is, so the antenna leans across his shoulders whatever way he faces.

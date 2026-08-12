@@ -38,8 +38,8 @@ notebook del taller.
 - **Mover o sacar un bloque:** arrástralo. Si lo sueltas fuera del programa, se borra.
 - **Repetir:** los bloques que van adentro del *repetir* se ejecutan varias veces. Con
   los botones **−** y **+** se cambia cuántas.
-- **El robot:** aunque esté esperando, respira, mueve la antena y pestañea cada tantos
-  segundos. Nunca gira solo: hacia dónde mira es información que el niño necesita leer
+- **El robot:** aunque esté esperando, respira, mueve la antena y cierra los ojos cada
+  tantos segundos. Nunca gira solo: hacia dónde mira es información que el niño necesita leer
   antes de apretar Ejecutar.
 - **Las pilas:** giran despacio y sueltan chispas mientras están en el tablero, para que
   el niño las vea de lejos. Al pasarles por encima estallan en un puñado de cubitos.

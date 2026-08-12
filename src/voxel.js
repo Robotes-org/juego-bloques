@@ -74,6 +74,42 @@ var Voxel = (function () {
 
   function face(n, v, ink) { return { n: n, v: v, ink: ink }; }
 
+  /* A box stuck flat onto one face of another box: the dark screen on the front of the
+     robot's head, the eyes and the mouth on the front of the screen.
+
+     These cannot be sorted by the depth of their centre, and it is not a matter of
+     tuning the numbers. The camera is pitched, so a box lower down is farther away, and
+     it is turned, so a box further to one side is farther away too — and either of those
+     will outweigh the half unit a decal stands proud of the plate it is stuck to. That
+     is exactly what went wrong: Rovi's mouth is below the middle of his screen and each
+     eye is off to one side, so the screen sorted in front of them and painted them out —
+     the mouth from every angle, and one eye whenever he was not looking straight at us.
+
+     So a decal is not sorted at all. It is drawn immediately after the box it is stuck
+     to when that face is turned towards us, and immediately before it when it is not,
+     which is what being stuck to a face means: in front from the front, hidden from
+     behind. Nothing can come between them — there is nothing to fit in the half unit of
+     air in front of a face — so this is exact rather than a fudge.
+
+     `on` must appear earlier in the same model than the decal, so its depth is already
+     worked out by the time this one needs it. Decals can be stuck to decals. */
+  function decal(host, x0, x1, y0, y1, z0, z1, ink, n) {
+    var b = box(x0, x1, y0, y1, z0, z1, ink);
+    b.on = host;
+    b.dir = n;
+    return b;
+  }
+
+  /* How far a face is turned towards the camera, once the item carrying it has been
+     turned. Positive means we can see it. */
+  function facing(n, p) {
+    return n[1] * SIN_P + (n[0] * p.sin + n[2] * p.cos) * COS_P;
+  }
+
+  /* The gap a decal is drawn in front of or behind its host. Small enough that nothing
+     real ever sorts between the two, and every distance on the board is in tile units. */
+  var STUCK = 0.0001;
+
   function readPalette(el) {
     var css = window.getComputedStyle(el);
     var out = {};
@@ -157,10 +193,13 @@ var Voxel = (function () {
           var p = place(item);
           var lift = item.lift || 0;
           item.model.forEach(function (b) {
-            var bx = b.c[0] * p.cos - b.c[2] * p.sin + p.px;
             var bz = b.c[0] * p.sin + b.c[2] * p.cos + p.pz;
-            queue.push({ b: b, p: p, item: item, lift: lift,
-              d: (b.c[1] + p.py + lift) * SIN_P + bz * COS_P });
+            var d = (b.c[1] + p.py + lift) * SIN_P + bz * COS_P;
+            /* Something stuck to a face borrows its host's place in the queue instead of
+               taking one of its own — see decal(). */
+            if (b.on) d = b.on.at + (facing(b.dir, p) > 0 ? STUCK : -STUCK);
+            b.at = d;
+            queue.push({ b: b, p: p, item: item, lift: lift, d: d });
           });
         });
         queue.sort(function (a, b) { return a.d - b.d; });
@@ -173,11 +212,12 @@ var Voxel = (function () {
           if (want !== alpha) { ctx.globalAlpha = want; alpha = want; }
 
           job.b.f.forEach(function (q) {
-            var nx = q.n[0] * p.cos - q.n[2] * p.sin;
-            var nz = q.n[0] * p.sin + q.n[2] * p.cos;
             /* The camera sits up and towards +z, so a face is turned towards us when
                its normal leans the same way. */
-            if (q.n[1] * SIN_P + nz * COS_P <= 0.001) return;
+            if (facing(q.n, p) <= 0.001) return;
+
+            var nx = q.n[0] * p.cos - q.n[2] * p.sin;
+            var nz = q.n[0] * p.sin + q.n[2] * p.cos;
 
             var rgb = paint[item.tint || q.ink] || paint.stone;
             var k = item.unlit ? 1
@@ -205,5 +245,5 @@ var Voxel = (function () {
     };
   }
 
-  return { create: create, box: box, YAW: YAW, COS_P: COS_P, SIN_P: SIN_P };
+  return { create: create, box: box, decal: decal, YAW: YAW, COS_P: COS_P, SIN_P: SIN_P };
 })();

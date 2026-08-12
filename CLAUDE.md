@@ -241,9 +241,22 @@ Things that are easy to get wrong:
   itself into the square behind it: the first flagpole was 30 units and ran straight
   through a robot standing a row further back. The robot is the one exception, and only
   because it is what the eye is following anyway.
-- **Painter's algorithm is exact here, not approximate.** Every part is a convex box on a
-  common plane, so sorting by the depth of each box's centre is enough — no z-buffer, no
-  per-face sorting, no WebGL. Keep new shapes convex and box-shaped and it stays true.
+- **Painter's algorithm is exact for boxes that stand apart, and wrong for a box stuck
+  onto the face of another one.** Sorting by the depth of each centre is enough for
+  everything that occupies its own patch of ground — no z-buffer, no per-face sorting, no
+  WebGL. It breaks down the moment a small box is laid on a big one's face: the camera is
+  pitched, so a lower box is farther away, and it is turned, so a box off to one side is
+  farther away too, and either of those outweighs the half unit the small box stands
+  proud. Rovi's face was the proof. His mouth is below the middle of his screen and each
+  eye is off to one side, so the screen sorted in front of them and painted them out — the
+  mouth from every angle, and one eye whenever he was not looking straight at the camera.
+  Both had been invisible since the day the board became a canvas.
+  **Anything laid on a face goes through `Voxel.decal`,** which does not sort it at all:
+  it is drawn immediately after the box it is stuck to when that face is turned towards
+  us and immediately before it when it is not. Nothing can come between the two, so that
+  is exact rather than a fudge. A decal has to come after its host in the model array, and
+  decals can be stuck to decals — the screen is stuck to the head, the eyes and the mouth
+  to the screen.
 - **Wall blocks are a unit narrower than their square.** Flush against each other they
   merge into one grey slab and a child can no longer count how many squares a wall takes
   up. The thin line of grass between them is what makes them countable.
@@ -315,9 +328,11 @@ Things that are easy to get wrong:
   - **The idle animation may not touch the yaw.** Which way the robot faces is
     information a child reads before pressing play, and a robot that glances about is a
     robot whose heading you have to check twice.
-  - The eyes are their own item so they can go out on their own, and **the mouth stays
-    with the body**. A face that closes its eyes is blinking; a face that loses its mouth
-    as well has switched off.
+  - **A blink is a second whole model** (`ROVI_BLINK`), identical but for the eyes closed
+    to a slit, and the board swaps one for the other. Eyes that switch off for a tenth of
+    a second read as a face that lost its eyes; eyes that close to a line read as an
+    eyelid. The mouth does not move through it — a face that loses its mouth as well has
+    switched off.
   - The antenna only ever dips. Springing it upwards lifts the foot of its own mast out
     of the head it is planted in.
 - **The animation loop no longer stops while a level is open.** It used to: everything
