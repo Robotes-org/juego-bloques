@@ -329,6 +329,40 @@
     check('el límite de bloques del nivel se respeta', Editor.count() === capped.max,
       'count ' + Editor.count() + ' con max ' + capped.max);
     check('pasarse del límite avisa al niño', rejected > 0);
+
+    /* ---------- guardar y volver a abrir el programa ---------- */
+
+    Editor.setLevel(level);
+    clickBlock(palette.querySelector('[data-type="forward"]'));
+    clickBlock(palette.querySelector('[data-type="repeat"]'));
+    pressTimes(1, 1);                       // the repeat starts at 4, so this makes it 5
+    var saved = JSON.parse(JSON.stringify(Editor.snapshot()));
+
+    Editor.setLevel(level, saved);
+    check('el programa guardado vuelve tal cual',
+      Editor.count() === 2 && Editor.getProgram()[0].type === 'forward' &&
+      Editor.getProgram()[1].type === 'repeat' && Editor.getProgram()[1].times === 5,
+      JSON.stringify(Editor.snapshot()));
+
+    Editor.setLevel(level, saved);
+    check('los ids no se repiten al restaurar dos veces',
+      Editor.getProgram()[0].id !== Editor.getProgram()[1].id);
+
+    // Whatever is in storage is not to be trusted: it survives a browser, a pendrive and
+    // a curious ten year old with the developer tools open.
+    Editor.setLevel(level, [{ type: 'volar' }, { type: 'forward' },
+      { type: 'repeat', times: 99, body: [{ type: 'nope' }] }]);
+    check('un programa guardado con basura se limpia al restaurar',
+      Editor.count() === 2 && Editor.getProgram()[1].times === 4,
+      JSON.stringify(Editor.snapshot()));
+
+    // Level 1 offers only "avanzar", so a saved repeat from another level cannot come in.
+    Editor.setLevel(LEVELS[0], [{ type: 'forward' }, { type: 'repeat', times: 3, body: [] }]);
+    check('no se restaura un bloque que el nivel no ofrece', Editor.count() === 1,
+      JSON.stringify(Editor.snapshot()));
+
+    Editor.setLevel(level, 'no soy un programa');
+    check('un guardado corrupto deja el programa vacío', Editor.count() === 0);
   }
 
   /* ---------- run everything ---------- */

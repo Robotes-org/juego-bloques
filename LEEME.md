@@ -64,6 +64,11 @@ marcados en amarillo arriba.
   terminado. Sirve para saltar al nivel que toca en la clase sin tener que jugar los
   anteriores. Si más adelante conviene que cada nivel se abra al terminar el anterior,
   se cambia `UNLOCK_ALL` a `false` en `src/game.js`.
+- **El programa que gana un nivel queda guardado.** Al volver a ese nivel aparece de
+  nuevo en el panel, para poder revisar con el niño cómo lo resolvió. Se guarda el mejor
+  intento, no el último: si después juega peor, no se pierde el programa de las tres
+  pilas. Ojo con los notebooks compartidos — el niño que abra un nivel ya resuelto se va
+  a encontrar con la solución del anterior.
 - El nivel se pasa llegando a la bandera. Las estrellas son la excusa para la segunda
   pregunta: *¿y cómo lo harías pasando por las tres pilas?*
 - En los niveles de patrón, **las pilas están puestas sobre el camino que recorre la
