@@ -40,8 +40,6 @@ var Models = (function () {
     return [box(-w, w, GROUND, GROUND + WALL, -w, w, 'stone')];
   }
 
-  /* A pennant cut in three steps, on a pole, planted in a block of soil. Three steps and
-     not six: finer stairs turn into a feather once a tile is small. */
   /* Nothing on the board stands taller than TALL, and the flag is the reason the limit
      is written down. Turned 45° and seen from here, one square of the map is about 14
      units of screen height, and a box of height h reaches h·cos(pitch) up the screen —
@@ -52,17 +50,31 @@ var Models = (function () {
      landed right beside the island's own soil rim, and the two browns read as one broken
      step in the edge rather than as a flag standing on something. Blue cannot be
      mistaken for the ground it stands on, and it belongs to the flag above it. */
-  function flag() {
+  function post() {
     return [
       box(-10, 10, GROUND, GROUND + 1.5, -10, 10, 'deep'),
-      box(-1.5, 1.5, GROUND, GROUND + TALL, -1.5, 1.5, 'dark'),
-      box(1.5, 15, GROUND + 15, GROUND + TALL, -2, 2, 'glow'),
-      box(1.5, 11, GROUND + 10, GROUND + 15, -2, 2, 'glow'),
-      // All three steps in the one cyan. The lowest used to be the darker blue for a bit
-      // of shading, and once the pad below it became that same blue the step sank into
-      // it and read as a fin growing out of the ground.
-      box(1.5, 7, GROUND + 5, GROUND + 10, -2, 2, 'glow')
+      box(-1.5, 1.5, GROUND, GROUND + TALL, -1.5, 1.5, 'dark')
     ];
+  }
+
+  /* The cloth is three separate pieces rather than part of the flag, and each one is a
+     box centred on its own origin, because the board moves them one at a time: a ripple
+     is the same shape lagging a little further behind the higher one. All three in the
+     one cyan — the lowest used to be a darker blue for a bit of shading, and once the pad
+     below it became that same blue the step sank into it and read as a fin growing out
+     of the ground.
+
+     The steps are what the flag is: a pennant cut in three rather than on the diagonal,
+     because finer stairs turn into a feather once a tile is small. */
+  var CLOTH = [
+    { len: 13.5, tall: 7, x: 8.25, y: GROUND + 18.5 },
+    { len: 9.5, tall: 5, x: 6.25, y: GROUND + 12.5 },
+    { len: 5.5, tall: 5, x: 4.25, y: GROUND + 7.5 }
+  ];
+
+  function cloth(step) {
+    var s = CLOTH[step];
+    return [box(-s.len / 2, s.len / 2, -s.tall / 2, s.tall / 2, -2, 2, 'glow')];
   }
 
   /* One cube, for the burst the flag leaves behind when the robot reaches it. The colour
@@ -114,7 +126,6 @@ var Models = (function () {
     /* the face: a dark screen inset into the front of the head, with the eyes and the
        mouth standing a hair proud of it so they catch their own light */
     box(-5.6, 5.6, 14.3, 19.6, -6.2, -5.5, 'screen'),
-    box(-4.3, -1.3, 16.2, 18.4, -6.5, -6.2, 'glow'), box(1.3, 4.3, 16.2, 18.4, -6.5, -6.2, 'glow'),
     box(-2.6, 2.6, 14.8, 15.8, -6.5, -6.2, 'glow'),
 
     /* A cyan strip laid across the top of the head, near the front edge. It is not on
@@ -122,9 +133,25 @@ var Models = (function () {
        rather than for the look: when the robot walks away from the camera its face is
        hidden, and without a mark on a surface the camera can always see there is no way
        to tell which way it is about to go. */
-    box(-4.4, 4.4, 20.5, 20.9, -4.6, -2.2, 'glow'),
+    box(-4.4, 4.4, 20.5, 20.9, -4.6, -2.2, 'glow')
+  ];
 
-    /* the antenna, set towards the back the way the concept draws it */
+  /* The eyes and the antenna are separate so the board can move them on their own while
+     they ride along with the rest of the robot: the eyes go out for a moment when Rovi
+     blinks, and the antenna answers his breathing half a beat late. Both are still in
+     the robot's own coordinates, so whoever draws them has to give them the robot's
+     position and heading — see the idle animation in board.js.
+
+     The mouth stays with the body. A face that closes its eyes is blinking; a face that
+     loses its mouth as well has switched off. */
+  var ROVI_EYES = [
+    box(-4.3, -1.3, 16.2, 18.4, -6.5, -6.2, 'glow'),
+    box(1.3, 4.3, 16.2, 18.4, -6.5, -6.2, 'glow')
+  ];
+
+  /* Set towards the back the way the concept draws it. The stalk comes with it: swaying
+     the tip alone would leave it floating off the end of its own mast. */
+  var ROVI_ANTENNA = [
     box(-0.6, 0.6, 20.5, 24, 3, 4.2, 'dark'),
     box(-1.6, 1.6, 24, 26.5, 2, 5.2, 'glow')
   ];
@@ -133,6 +160,7 @@ var Models = (function () {
      board has to leave room for when it works out how big a cell can be. */
   var ROVI_TOP = 26.5;
 
-  return { TILE: TILE, GROUND: GROUND, WALL: WALL, ROVI: ROVI, ROVI_TOP: ROVI_TOP,
-    tile: tile, wall: wall, flag: flag, battery: battery, shadow: shadow, spark: spark };
+  return { TILE: TILE, GROUND: GROUND, WALL: WALL, ROVI: ROVI, ROVI_EYES: ROVI_EYES, ROVI_ANTENNA: ROVI_ANTENNA, ROVI_TOP: ROVI_TOP,
+    tile: tile, wall: wall, post: post, cloth: cloth, CLOTH: CLOTH,
+    battery: battery, shadow: shadow, spark: spark };
 })();

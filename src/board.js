@@ -31,6 +31,28 @@ var Board = (function () {
      before it opens, and after that the board is behind a scrim. */
   var FLAG_MS = 220, SPARKS = 24, GRAVITY = 220;
 
+  /* A battery that is only sitting there is scenery. Turning slowly, breathing up and
+     down and trailing a few motes is what makes a child read it as something to go and
+     get. MOTE_MS is how long one mote takes to climb and fade. */
+  var MOTES = 3, MOTE_MS = 1800, SPIN_MS = 5200, BOB_MS = 1700;
+
+  /* And Rovi, who is alive whether or not anyone is asking him to do something: he
+     breathes, his antenna answers half a beat late, and every few seconds he blinks.
+     The blink is the one that does the work — a face with eyes that never close is a
+     drawing of a face. It is kept short: long enough to see, too short to look like the
+     robot has stopped working. */
+  var BREATH_MS = 2600, BLINK_EVERY = 3800, BLINK_MS = 130;
+
+  /* And one ripple down the pennant. Slower than a real flag on purpose: at anything
+     brisker the steps read as flickering rather than as cloth. */
+  var WAVE_MS = 1600;
+
+  /* The shimmer never stops, so unlike everything else on this board it would hold the
+     animation loop open for as long as a level is on screen. It gets its own slower
+     clock: a full redraw is the whole board, and a child staring at a puzzle does not
+     need sixty of them a second. */
+  var IDLE_FPS = 24;
+
   /* Turns the ASCII rows of a level into something the game can query. */
   function parse(level) {
     var rows = level.map;
@@ -100,17 +122,55 @@ var Board = (function () {
       return (a.gx + a.gy) - (b.gx + b.gy) || a.gx - b.gx;
     }).forEach(function (t, i) { t.turn = i; });
 
-    var goalItem = { model: Models.flag(), x: wx(g.goal.x), z: wz(g.goal.y), y: 0 };
+    /* The flag is the pole and its pad; the cloth above it is three more items, one per
+       step, so that each can lag behind the one above it and the pennant ripples. */
+    var goalItem = { model: Models.post(), x: wx(g.goal.x), z: wz(g.goal.y), y: 0 };
 
-    var batteryItems = g.batteries.map(function (b) {
-      return { model: Models.battery(), x: wx(b.x), z: wz(b.y), y: 0, gx: b.x, gy: b.y, takenAt: 0 };
+    var clothItems = Models.CLOTH.map(function (s, i) {
+      return { model: Models.cloth(i), home: s, step: i,
+        x: goalItem.x + s.x, z: goalItem.z, y: s.y };
+    });
+
+    var batteryItems = g.batteries.map(function (b, i) {
+      return { model: Models.battery(), x: wx(b.x), z: wz(b.y), y: 0, gx: b.x, gy: b.y,
+        takenAt: 0, phase: i * 2.1 };
+    });
+
+    /* Three motes circling each battery, rising and fading as they go. They are made
+       once and moved every frame rather than spawned and collected: a level runs for
+       minutes and nothing that lives that long should be allocating.
+
+       Their whole motion is a function of the clock, so there is no state to keep in
+       step and no drift — a mote that is a frame late simply appears where it should
+       have been. `phase` is what stops three of them travelling as one. */
+    var motes = [];
+    batteryItems.forEach(function (b, bi) {
+      for (var m = 0; m < MOTES; m++) {
+        motes.push({
+          model: Models.spark(1.3 + (m % 2) * 0.6),
+          of: b,
+          phase: m / MOTES + bi * 0.37,
+          /* Cream reads as a glint and amber as the battery's own light. Both, so the
+             halo sparkles instead of glowing one flat colour. */
+          tint: m % 2 ? 'gold' : 'shell',
+          /* Unlit, unlike everything else on the board: a mote shaded by the same light
+             as the ground looks like a chip of something lying about. At full colour on
+             every face it reads as giving off light instead of catching it. */
+          unlit: true,
+          x: 0, y: 0, z: 0, yaw: 0, alpha: 0
+        });
+      }
     });
 
     var shadowItem = { model: Models.shadow(), x: 0, z: 0, y: 0, unlit: true, alpha: 0.22 };
     var robotItem = { model: Models.ROVI, x: 0, z: 0, y: Models.GROUND, yaw: 0 };
+    /* Both ride with the robot — same square, same heading — and are only separate so
+       that the eyes can go out on their own and the antenna can lag behind. */
+    var eyeItem = { model: Models.ROVI_EYES, x: 0, z: 0, y: Models.GROUND, yaw: 0 };
+    var antennaItem = { model: Models.ROVI_ANTENNA, x: 0, z: 0, y: Models.GROUND, yaw: 0 };
 
-    var props = [goalItem].concat(batteryItems);
-    var world = ground.concat(props, [shadowItem, robotItem]);
+    var props = [goalItem].concat(clothItems, batteryItems);
+    var world = ground.concat(props, motes, [shadowItem, robotItem, eyeItem, antennaItem]);
     var sparks = [];      /* what is left of the flag, while it is still in the air */
 
     /* ---------- state ---------- */
@@ -126,30 +186,28 @@ var Board = (function () {
     var yawFrom = spin, yawTo = spin, turnAt = 0, turnMs = MOVE_MAX;
     var bumpAt = 0, hopAt = 0, goalAt = 0;
     var lastOrder = 0;
-    var raf = 0;
+    var raf = 0, lastDraw = 0;
 
     /* The flag comes apart into cubes thrown out and up from where it stood. Each one is
        given a velocity once and then placed by arithmetic on its own age, so the shower
        does not drift if a frame is late and needs no timestep passed around. */
-    function shatter() {
+    function shatter(at, count, tints, scale) {
       var now = performance.now();
-      sparks = [];
-      for (var i = 0; i < SPARKS; i++) {
+      for (var i = 0; i < count; i++) {
         var a = Math.random() * Math.PI * 2;
-        var out = 35 + Math.random() * 60;
+        var out = (35 + Math.random() * 60) * scale;
         sparks.push({
-          model: Models.spark(1.6 + Math.random() * 2.2),
-          x0: goalItem.x + Math.cos(a) * 4,
-          z0: goalItem.z + Math.sin(a) * 4,
-          y0: Models.GROUND + 6 + Math.random() * 16,
+          model: Models.spark((1.4 + Math.random() * 2) * scale),
+          x0: at.x + Math.cos(a) * 4,
+          z0: at.z + Math.sin(a) * 4,
+          y0: Models.GROUND + 6 + Math.random() * 14,
           vx: Math.cos(a) * out, vz: Math.sin(a) * out,
-          vy: 95 + Math.random() * 70,
+          vy: (95 + Math.random() * 70) * scale,
           spin: (Math.random() - 0.5) * 260,
           born: now,
           life: 780 + Math.random() * 320,
-          /* Cyan is what the flag was, amber is what a reward is everywhere else on the
-             page. Both, so the burst belongs to the flag and to the winning at once. */
-          tint: Math.random() < 0.55 ? 'glow' : 'gold',
+          tint: tints[Math.floor(Math.random() * tints.length)],
+          unlit: true,
           x: 0, z: 0, y: 0, yaw: 0, alpha: 1
         });
       }
@@ -166,7 +224,8 @@ var Board = (function () {
 
     function frame() {
       var now = performance.now();
-      var busy = false;
+      var busy = false;        /* something is really moving: draw every frame we can */
+      var shimmering = false;  /* only the endless idle motion: draw on the slow clock */
 
       ground.forEach(function (t) {
         var at = builtAt + t.turn * BUILD_STEP;
@@ -191,12 +250,37 @@ var Board = (function () {
       }
       props.forEach(function (p) { p.lift = dropLift; p.alpha = dropAlpha; });
 
+      /* The pennant ripples: each step swings out of the plane of the cloth a little
+         later than the one above it, which is the whole of what makes a flag look like
+         cloth rather than like a sign. The free end of each step moves furthest, so the
+         swing grows with the step's own length. */
+      if (!reduced && !goalAt && dropAlpha >= 1) {
+        shimmering = true;
+        clothItems.forEach(function (c) {
+          /* Small numbers on purpose. A step is only four units thick, so a swing much
+             wider than this — or a longer lag between one step and the next — pulls the
+             three of them apart and the pennant reads as three loose slabs instead of
+             one piece of cloth. */
+          var t = now / WAVE_MS * Math.PI * 2 - c.step * 0.55;
+          var swing = c.home.len * 0.09;
+          c.z = goalItem.z + Math.sin(t) * swing;
+          c.x = goalItem.x + c.home.x - Math.abs(Math.sin(t)) * swing * 0.35;
+          c.y = c.home.y + Math.cos(t) * 0.7;
+        });
+      }
+
       /* The flag does not turn a colour when it is reached any more: it lifts off and is
          gone inside a fifth of a second, and what stays is the burst. */
       if (goalAt) {
         var gk = reduced ? 1 : (now - goalAt) / FLAG_MS;
-        if (gk >= 1) goalItem.alpha = 0;
-        else { busy = true; goalItem.alpha = 1 - gk; goalItem.lift = dropLift + 14 * gk; }
+        var fade = gk >= 1 ? 0 : 1 - gk;
+        if (gk < 1) busy = true;
+        goalItem.alpha = fade;
+        goalItem.lift = dropLift + 14 * Math.min(1, gk);
+        clothItems.forEach(function (c) {
+          c.alpha = fade;
+          c.lift = goalItem.lift;
+        });
       }
 
       if (sparks.length) {
@@ -218,14 +302,37 @@ var Board = (function () {
       }
 
       /* A collected battery lifts off its square and fades, which reads as taken rather
-         than as a drawing that disappeared. */
+         than as a drawing that disappeared. The ones still out there turn on the spot
+         and breathe, so that the eye goes to them. */
       batteryItems.forEach(function (b) {
-        if (!b.takenAt) return;
-        var k = reduced ? 1 : (now - b.takenAt) / TAKE_MS;
-        if (k >= 1) { b.alpha = 0; return; }
-        busy = true;
-        b.alpha = 1 - k;
-        b.lift = dropLift + 18 * k;
+        if (b.takenAt) {
+          var k = reduced ? 1 : (now - b.takenAt) / TAKE_MS;
+          if (k >= 1) { b.alpha = 0; return; }
+          busy = true;
+          b.alpha = 1 - k;
+          b.lift = dropLift + 18 * k;
+          return;
+        }
+        if (reduced) return;
+        shimmering = true;
+        b.yaw = (now / SPIN_MS * 360 + b.phase * 40) % 360;
+        b.lift = dropLift + Math.sin(now / BOB_MS * Math.PI * 2 + b.phase) * 1.4;
+      });
+
+      /* The motes climb, circle and fade on a loop, all of it read off the clock. */
+      motes.forEach(function (m) {
+        if (reduced || m.of.takenAt || dropAlpha < 1) { m.alpha = 0; return; }
+        var k = (now / MOTE_MS + m.phase) % 1;
+        var a = m.phase * 6.3 + k * 2.6;
+        // Wide enough to clear the battery itself: a mote drawn against the amber body
+        // is a chip stuck to it, and only out over the grass does it read as a spark.
+        var r = 14 - k * 4;
+        m.x = m.of.x + Math.cos(a) * r;
+        m.z = m.of.z + Math.sin(a) * r;
+        m.y = Models.GROUND + 1 + k * 23;
+        m.yaw = k * 220;
+        // Up from nothing and back to nothing, so no mote ever blinks out mid-air.
+        m.alpha = Math.sin(k * Math.PI) * 0.95;
       });
 
       /* Walking is interpolated between two squares rather than snapped, so a step
@@ -268,17 +375,55 @@ var Board = (function () {
       var px = wx(gx) + Math.sin(rad) * shove * TILE;
       var pz = wz(gy) - Math.cos(rad) * shove * TILE;
 
+      /* Rovi is never quite still. He breathes, his antenna answers half a beat behind
+         him, and every few seconds he blinks. None of it moves him off his square: the
+         heading is information a child reads, so the idle animation is not allowed to
+         touch the yaw, and the breath is well under a tenth of a tile. */
+      var breath = 0, blink = false, lean = 0, drift = 0;
+      if (!reduced && dropAlpha >= 1) {
+        shimmering = true;
+        var bt = now / BREATH_MS * Math.PI * 2;
+        breath = Math.sin(bt) * 0.55;
+        // The antenna trails the breath and only ever dips: springing upwards would lift
+        // the foot of its own mast out of the head it is planted in.
+        drift = (Math.sin(bt - 0.9) - 1) * 0.5;
+        lean = Math.sin(bt - 0.9) * 0.6;
+        blink = (now % BLINK_EVERY) < BLINK_MS;
+      }
+
       robotItem.x = px;
       robotItem.z = pz;
       robotItem.yaw = yaw;
-      robotItem.lift = dropLift + hop;
+      robotItem.lift = dropLift + hop + breath;
       robotItem.alpha = dropAlpha;
+
+      eyeItem.x = px;
+      eyeItem.z = pz;
+      eyeItem.yaw = yaw;
+      eyeItem.lift = robotItem.lift;
+      eyeItem.alpha = blink ? 0 : dropAlpha;
+
+      // The sway is worked out in Rovi's own frame and turned into the world's, the same
+      // way the bump is, so the antenna leans across his shoulders whatever way he faces.
+      antennaItem.x = px + Math.cos(rad) * lean;
+      antennaItem.z = pz + Math.sin(rad) * lean;
+      antennaItem.yaw = yaw;
+      antennaItem.lift = robotItem.lift + drift;
+      antennaItem.alpha = dropAlpha;
+
       shadowItem.x = px;
       shadowItem.z = pz;
       shadowItem.alpha = dropAlpha * (0.22 - hop * 0.012);
 
-      scene.draw(sparks.length ? world.concat(sparks) : world);
-      raf = busy ? window.requestAnimationFrame(frame) : 0;
+      /* Something really moving is drawn every frame it can be. The shimmer on its own
+         is drawn on the slower clock — it is the only animation here that never ends,
+         and at sixty frames a second it would repaint the whole board for as long as a
+         level is open, on a laptop that has better things to do. */
+      if (busy || now - lastDraw >= 1000 / IDLE_FPS) {
+        lastDraw = now;
+        scene.draw(sparks.length ? world.concat(sparks) : world);
+      }
+      raf = (busy || shimmering) ? window.requestAnimationFrame(frame) : 0;
     }
 
     function kick() { if (!raf) raf = window.requestAnimationFrame(frame); }
@@ -326,6 +471,9 @@ var Board = (function () {
         });
         if (!hit) return false;
         hit.takenAt = performance.now();
+        // A smaller, all-amber version of what the flag does: picking one up should be
+        // an event, and it is the same machinery so the two cannot drift apart.
+        if (!reduced) shatter(hit, 10, ['gold', 'shell'], 0.6);
         kick();
         return true;
       },
@@ -333,7 +481,9 @@ var Board = (function () {
       celebrate: function () {
         goalAt = performance.now();
         hopAt = goalAt;
-        if (!reduced) shatter();
+        /* Cyan is what the flag was, amber is what a reward is everywhere else on the
+           page. Both, so the burst belongs to the flag and to the winning at once. */
+        if (!reduced) shatter(goalItem, SPARKS, ['glow', 'glow', 'gold'], 1);
         kick();
       },
 
@@ -346,6 +496,13 @@ var Board = (function () {
         sparks = [];
         goalItem.alpha = 1;
         goalItem.lift = 0;
+        clothItems.forEach(function (c) {
+          c.alpha = 1;
+          c.lift = 0;
+          c.x = goalItem.x + c.home.x;
+          c.z = goalItem.z;
+          c.y = c.home.y;
+        });
         batteryItems.forEach(function (b) { b.takenAt = 0; b.alpha = 1; b.lift = 0; });
         kick();
       },

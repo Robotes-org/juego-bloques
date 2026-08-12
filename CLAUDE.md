@@ -287,7 +287,44 @@ Things that are easy to get wrong:
 - `prefers-reduced-motion` is checked in JS and switches off the build, the walk and the
   turn. CSS cannot reach inside a canvas, so nothing about the board appears in the media
   query in `styles.css`.
-- The animation loop runs only while something is moving and stops itself afterwards.
+- **The batteries never stop moving**, and they are the only thing on the board that
+  does not. Each turns slowly, breathes up and down, and trails three motes that circle,
+  climb and fade. The whole motion is a function of the clock — nothing is spawned,
+  nothing is collected, and a mote that is a frame late simply appears where it should
+  have been.
+  - The motes are drawn `unlit`. Shaded by the same light as the ground they look like
+    chips of something lying about; at full colour on every face they read as giving off
+    light. That is the only reason the flag has `unlit` too.
+  - They orbit wide enough to clear the battery itself. Drawn against the amber body a
+    mote is a chip stuck to it; only out over the grass is it a spark.
+  - **A shimmer that never ends would hold the animation loop open for as long as a level
+    is on screen**, and every frame is a full repaint of the board. So the shimmer alone
+    draws on a slower clock (`IDLE_FPS`) while anything really moving still draws on
+    every frame it can. This was reasoned about rather than measured: headless Chrome
+    does not produce real animation frames, so the actual cost on a school notebook is
+    still unverified. **Check it on the oldest laptop in the room before shipping.**
+- **The pennant ripples**, which is why the cloth is three separate items and not part
+  of the flag: each step swings out of the plane of the cloth a little later than the one
+  above it, and that lag is the whole of what makes cloth look like cloth. The numbers are
+  deliberately small — a step is only four units thick, so a wider swing or a longer lag
+  pulls the three apart and the flag reads as three loose slabs. It waves and the
+  batteries sparkle, and keeping those two apart is worth something: the flag is where
+  you are going, the batteries are what you pick up on the way.
+- **Rovi is never quite still**: he breathes, his antenna trails half a beat behind him,
+  and every few seconds he blinks. Three rules came out of building it:
+  - **The idle animation may not touch the yaw.** Which way the robot faces is
+    information a child reads before pressing play, and a robot that glances about is a
+    robot whose heading you have to check twice.
+  - The eyes are their own item so they can go out on their own, and **the mouth stays
+    with the body**. A face that closes its eyes is blinking; a face that loses its mouth
+    as well has switched off.
+  - The antenna only ever dips. Springing it upwards lifts the foot of its own mast out
+    of the head it is planted in.
+- **The animation loop no longer stops while a level is open.** It used to: everything
+  moved, then settled, then the loop shut down. Between the batteries, the flag and Rovi
+  there is now always something in motion, so what protects the machine is `IDLE_FPS` and
+  nothing else. If the board ever needs to be made cheaper, that is the dial — and the
+  cost has still not been measured on a real school notebook.
 - **Reaching the flag breaks it into cubes.** The flag lifts off and is gone in a fifth
   of a second, and two dozen small boxes are thrown out and up from where it stood — cyan
   because that is what the flag was, amber because that is what a reward is everywhere
