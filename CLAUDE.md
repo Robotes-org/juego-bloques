@@ -43,7 +43,26 @@ python3 -m http.server 8000  # only if you want a server, not required
 - `tools/solver.js` — breadth-first solver, shared by the checker and the tests.
 - `tools/check-levels.js` — proves every level is solvable and that `par`/`max` are honest.
 - `tools/test.html`, `tools/test.sh` — the test suite, run in headless Chrome.
-- `assets/tokens.css`, `assets/logo/favicon.svg` — **copied from `~/marca`, do not hand-edit.**
+- `GUIA-PROFESOR.md` — the teacher's guide, in Spanish: a class plan, the curriculum
+  objectives it covers, and every level's idea and shortest solutions. **It hard-codes
+  the solutions**; `tools/check-guide.js` replays every one against `src/levels.js`, so
+  a level change that breaks the guide fails `./tools/test.sh` and the workflow.
+- `GUIA-PROFESOR.pdf` — **generated, do not hand-edit.** Rebuilt and committed by
+  `.github/workflows/guide.yml` on every push to master, when its text changes. Served at
+  `https://rovi.robotes.org/GUIA-PROFESOR.pdf`, which is the link `robotes.org` hands to
+  teachers the moment they leave an email. Do not rename or move it.
+- `tools/build-guide-pdf.py` — Markdown to PDF through headless Chrome, in the document
+  style of `~/marca/manual/07-aplicaciones.md` §7.4. Needs `pip install markdown` and a
+  connection (Space Grotesk and Inter come from Google Fonts so Chrome embeds them).
+- `tools/check-guide.js` — the guide checker. Parses the solution lines under
+  «Nivel por nivel»; keep them in the shape `- **Solución** (bandera y 3 pilas, 8
+  bloques) → …` or the checker will not see them.
+- `.github/workflows/guide.yml` — checks, builds and publishes the PDF. On pull
+  requests it checks and builds without publishing.
+- `sugerencias.md` — curriculum objectives the game could cover with changes, with a
+  proposal and an effort estimate for each. A backlog, not a promise.
+- `assets/tokens.css`, `assets/logo/favicon.svg`, `assets/logo/logo-vertical.svg` —
+  **copied from `~/marca`, do not hand-edit.** The vertical logo is only for the PDF cover.
   Refresh with `cp ~/marca/assets/tokens.css assets/tokens.css`.
 - `assets/fonts/nunito-latin.woff2` — Nunito, self-hosted, latin subset only, 39 KB.
   Variable font, so the one file covers every weight. Licence in `assets/fonts/OFL.txt`.

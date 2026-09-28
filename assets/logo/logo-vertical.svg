@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 132" width="200" height="132" role="img" aria-label="robotes.org">
+  <title>Logo vertical robotes.org</title>
+  <g transform="translate(68 0)">
+    <path d="M32 11 V18" stroke="#2c3742" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+    <circle cx="32" cy="7" r="4" fill="#ffc53d"/>
+    <path fill="#2c3742" fill-rule="evenodd" d="M20 17 H44 A12 12 0 0 1 56 29 V45 A12 12 0 0 1 44 57 H20 A12 12 0 0 1 8 45 V29 A12 12 0 0 1 20 17 Z
+       M28.5 37 A5.5 5.5 0 1 1 17.5 37 A5.5 5.5 0 1 1 28.5 37 Z
+       M46.5 37 A5.5 5.5 0 1 1 35.5 37 A5.5 5.5 0 1 1 46.5 37 Z"/>
+  </g>
+  <text x="100" y="112" text-anchor="middle" font-family="Space Grotesk, Segoe UI, system-ui, sans-serif" font-size="32" font-weight="600" letter-spacing="-0.5" textLength="168" lengthAdjust="spacingAndGlyphs">
+    <tspan fill="#2c3742">robotes</tspan><tspan fill="#15628f">.org</tspan>
+  </text>
+</svg>
