@@ -1,0 +1,77 @@
+# Keeps GUIA-PROFESOR.pdf in step with the game.
+#
+# On every push to master: check the levels, replay every solution written in
+# GUIA-PROFESOR.md against src/levels.js, rebuild the PDF and commit it if its text
+# changed. Pages then serves it at https://rovi.robotes.org/GUIA-PROFESOR.pdf, which is
+# the link robotes.org hands to teachers.
+#
+# On a pull request it runs the same checks and the build, and publishes nothing, so a
+# level change that breaks the guide shows up before the merge.
+name: Guía del profesor
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: guide-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  guide:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Niveles
+        run: node tools/check-levels.js
+
+      - name: Soluciones de la guía
+        run: node tools/check-guide.js
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Dependencias
+        run: |
+          pip install markdown
+          sudo apt-get install -y -qq poppler-utils > /dev/null
+
+      - name: PDF
+        run: |
+          cp GUIA-PROFESOR.pdf /tmp/previous.pdf 2>/dev/null || true
+          python3 tools/build-guide-pdf.py
+
+      # Chrome writes a new timestamp into every PDF, so bytes always differ. Only a
+      # change in the text is worth a commit.
+      - name: Publicar
+        if: github.event_name != 'pull_request'
+        run: |
+          pdftotext GUIA-PROFESOR.pdf /tmp/new.txt
+          if [ -f /tmp/previous.pdf ]; then
+            pdftotext /tmp/previous.pdf /tmp/old.txt
+            if cmp -s /tmp/old.txt /tmp/new.txt; then
+              echo "La guía no cambió."
+              exit 0
+            fi
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add GUIA-PROFESOR.pdf
+          git commit -m "Actualiza el PDF de la guía del profesor"
+          git push
+          # A push made with GITHUB_TOKEN may not start a Pages build on its own.
+          gh api -X POST "repos/${{ github.repository }}/pages/builds" || true
+        env:
+          GH_TOKEN: ${{ github.token }}

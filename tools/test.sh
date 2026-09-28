@@ -8,6 +8,10 @@ cd "$(dirname "$0")/.."
 echo "== Niveles =="
 node tools/check-levels.js
 
+echo
+echo "== Guía del profesor =="
+node tools/check-guide.js
+
 CHROME=""
 for candidate in google-chrome chromium chromium-browser chrome; do
   if command -v "$candidate" > /dev/null 2>&1; then CHROME="$candidate"; break; fi

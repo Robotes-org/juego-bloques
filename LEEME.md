@@ -65,6 +65,9 @@ marcados en amarillo arriba.
 
 ## Para el profe
 
+La guía completa para llevar una clase, con las soluciones de cada nivel, está en
+[`GUIA-PROFESOR.md`](GUIA-PROFESOR.md).
+
 - **Los 12 niveles están abiertos desde el principio**, sin importar cuáles se hayan
   terminado. Sirve para saltar al nivel que toca en la clase sin tener que jugar los
   anteriores. Si más adelante conviene que cada nivel se abra al terminar el anterior,
