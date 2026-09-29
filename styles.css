@@ -948,8 +948,9 @@ h2, h3 {
   .stage { min-height: 0; }
 }
 
-/* Phones held upright: one column, board first, and the controls pinned to the bottom
-   of the screen so «Ejecutar» is always under the thumb. */
+/* Phones held upright: one column, board first, then the program and the blocks under
+   it, so a tapped block lands in plain sight just above the thumb. The controls are
+   pinned to the bottom of the screen so «Ejecutar» is always under the thumb. */
 @media (max-width: 40rem) {
   .topbar { padding: .5rem var(--rb-space-1) .25rem; }
   .brand-mark { width: 1.75rem; height: 1.75rem; }
@@ -958,7 +959,7 @@ h2, h3 {
 
   .stage {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "board" "palette" "program";
+    grid-template-areas: "board" "program" "palette";
     grid-template-rows: auto;
     min-height: 0;
     gap: var(--rb-space-1);

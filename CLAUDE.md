@@ -367,8 +367,8 @@ nothing changed: three columns, as it was built for a notebook.
 - **Short screens** (≤ 60rem wide and ≤ 30rem tall, a phone sideways): the board panel is
   sticky and its height is `100dvh` minus the chrome, so it stays in view while the left
   column scrolls.
-- **40rem and below** (a phone upright): one column, board first, then blocks, then
-  program. On both phone layouts the controls are a bar fixed to the bottom of the screen,
+- **40rem and below** (a phone upright): one column, board first, then program, then
+  blocks, as the founder asked: the program sits right under the board. On both phone layouts the controls are a bar fixed to the bottom of the screen,
   and pressing Ejecutar or Paso scrolls the board back into view (`showBoard()` in
   `game.js`).
 

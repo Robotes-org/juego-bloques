@@ -42,7 +42,7 @@
   var MESSAGES = {
     crash: 'El robot chocó con un muro. Revisa por dónde gira.',
     short: 'Se acabaron los bloques y el robot no llegó a la bandera.',
-    empty: 'Todavía no hay bloques. Haz clic en uno de la izquierda para empezar.',
+    empty: 'Todavía no hay bloques. Haz clic en uno para empezar.',
     overflow: 'El programa es demasiado largo. Baja el número de alguna repetición.'
   };
 
