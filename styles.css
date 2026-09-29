@@ -898,13 +898,97 @@ h2, h3 {
 
 /* ---------- narrow screens ---------- */
 
+/* Tablets, and phones held sideways: two columns. The blocks and the program share
+   the left one, the board takes the right one, so the robot is never below the fold
+   while the child builds. The page scrolls if the screen is short. */
 @media (max-width: 60rem) {
-  body { height: auto; }
-  .stage { grid-template-columns: 1fr; }
+  body { height: auto; min-height: 100%; }
+
+  .topbar { height: auto; min-height: var(--game-topbar); flex-wrap: wrap; row-gap: .25rem;
+            padding: .5rem var(--rb-space-2); }
+  /* One row that scrolls sideways instead of wrapping into three. The padding keeps
+     the current level's outline and the buttons' hard shadow from being clipped. */
+  .levels { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; padding: 5px 5px 8px;
+            scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .levels::-webkit-scrollbar { display: none; }
+  .level-btn { flex: none; }
+
+  .stage {
+    grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
+    grid-template-areas: "palette board" "program board";
+    grid-template-rows: auto 1fr;
+    min-height: calc(100dvh - var(--game-topbar));
+  }
+  .palette-panel { grid-area: palette; }
+  .program-panel { grid-area: program; }
+  .board-panel { grid-area: board; }
   .palette { flex-direction: row; flex-wrap: wrap; }
-  .palette .block { width: auto; flex: 1 1 8rem; }
-  .program { min-height: 12rem; }
-  .board-wrap { min-height: 16rem; }
+  .palette .block { width: auto; flex: 1 1 7rem; }
+  .program { min-height: 9rem; }
+  .board-wrap { min-height: 15rem; }
+  .counter { font-size: var(--rb-text-base); }
+  .panel-title { flex-wrap: wrap; }
+
+  .controls { flex-wrap: nowrap; }
+  /* The secondary buttons keep their icon and lose the word, so the five fit on one
+     line beside a board that is narrower than on a computer. The word stays in the
+     accessibility tree: a screen reader still says «Paso», «Detener», «Reiniciar». */
+  .controls .btn:not(.btn-run) .btn-label {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+}
+
+/* Phones held sideways: the screen is short, so the board stays in view while the
+   left column scrolls, and the controls go to the bar at the bottom (below). */
+@media (max-width: 60rem) and (max-height: 30rem) {
+  .board-panel { position: sticky; top: var(--rb-space-1); align-self: start; }
+  /* 100dvh less the bar, the sticky offset, the panel's title, status and padding. */
+  .board-wrap { min-height: 0; height: calc(100dvh - 13.5rem); }
+  .status { min-height: 2.25rem; padding-block: .35rem; }
+  .stage { min-height: 0; }
+}
+
+/* Phones held upright: one column, board first, and the controls pinned to the bottom
+   of the screen so «Ejecutar» is always under the thumb. */
+@media (max-width: 40rem) {
+  .topbar { padding: .5rem var(--rb-space-1) .25rem; }
+  .brand-mark { width: 1.75rem; height: 1.75rem; }
+  .brand-name { font-size: var(--rb-text-lg); }
+  .levels { width: 100%; margin-left: 0; }
+
+  .stage {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "board" "palette" "program";
+    grid-template-rows: auto;
+    min-height: 0;
+    gap: var(--rb-space-1);
+    padding: var(--rb-space-1) var(--rb-space-1) 0;
+  }
+  .panel { padding: .75rem; border-radius: 12px; }
+  .panel-title { font-size: var(--rb-text-base); }
+  .chip { font-size: var(--rb-text-sm); }
+  .board-panel { gap: var(--rb-space-1); scroll-margin-top: var(--rb-space-1); }
+  .board-wrap { min-height: 0; aspect-ratio: 5 / 4; padding: var(--rb-space-1); }
+  .status { min-height: 2.5rem; }
+  .program { min-height: 7rem; }
+
+}
+
+/* The controls bar, pinned to the bottom of the screen on phones either way up. */
+@media (max-width: 40rem), (max-width: 60rem) and (max-height: 30rem) {
+  .controls {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 10;
+    gap: .375rem;
+    padding: .5rem max(var(--rb-space-1), env(safe-area-inset-right)) calc(.5rem + env(safe-area-inset-bottom)) max(var(--rb-space-1), env(safe-area-inset-left));
+    background: var(--game-chrome);
+    border-top: 3px solid var(--rovi-borde);
+  }
+  /* Room at the end of the page so the fixed bar never covers the program. */
+  body { padding-bottom: calc(4.25rem + env(safe-area-inset-bottom)); }
+  .controls .btn { min-width: 0; padding: .7rem .6rem; font-size: var(--rb-text-sm); }
+  .controls .btn-speed { font-size: var(--rb-text-xs); padding-inline: .5rem; }
 }
 
 /* Nothing on the board is listed here, and it is not an oversight: board.js checks this

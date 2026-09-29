@@ -527,7 +527,10 @@ var Board = (function () {
         var s = Math.min(space.width / w * 0.96, space.height / h * 0.9);
         // A cell between these two reads: smaller and the robot's face is lost, larger
         // and a three by three level fills a whole classroom projector with grass.
-        s = clamp(s, 34 / TILE, 126 / TILE);
+        // On a phone a 7 by 7 level does not fit at 34, upright or sideways, so there
+        // the island simply fits its box: a small robot beats a clipped island.
+        var small = space.width < 420 || space.height < 300;
+        s = small ? Math.min(s, 126 / TILE) : clamp(s, 34 / TILE, 126 / TILE);
 
         scene.view(
           space.width / 2 - (bounds.x0 + bounds.x1) / 2 * s,
