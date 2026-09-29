@@ -192,7 +192,7 @@ var Editor = (function () {
     if (!program.length) {
       var empty = document.createElement('p');
       empty.className = 'program-empty';
-      empty.textContent = 'Arrastra bloques hasta aquí, o haz clic en uno de la izquierda.';
+      empty.textContent = 'Haz clic en un bloque o arrástralo hasta aquí.';
       els.program.appendChild(empty);
     } else {
       program.forEach(function (node) { els.program.appendChild(renderBlock(node)); });

@@ -124,6 +124,13 @@
       btn.addEventListener('click', function () { loadLevel(i); });
       el.nav.appendChild(btn);
     });
+    // On narrow screens the level bar is one row that scrolls sideways; keep the
+    // current level in sight. scrollLeft rather than scrollIntoView, which would also
+    // scroll the page.
+    var cur = el.nav.querySelector('.is-current');
+    if (cur && el.nav.scrollWidth > el.nav.clientWidth) {
+      el.nav.scrollLeft = cur.offsetLeft - (el.nav.clientWidth - cur.offsetWidth) / 2;
+    }
   }
 
   /* The battery counter beside the level name fills up as the robot drives over them. */
@@ -308,6 +315,21 @@
     onReject: function (message) { setStatus(message, 'warn'); }
   });
 
+  /* On a phone the board is above the blocks and the controls sit at the bottom of the
+     screen, so the child may be scrolled down to the program when pressing play.
+     Bring the board back into view: watching the robot is the point. */
+  var boardPanel = document.querySelector('.board-panel');
+  var narrow = window.matchMedia('(max-width: 40rem)');
+  function showBoard() {
+    if (!narrow.matches) return;
+    var r = boardPanel.getBoundingClientRect();
+    if (r.top < 0 || r.top > window.innerHeight / 3) {
+      boardPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  el.run.addEventListener('click', showBoard);
+  el.step.addEventListener('click', showBoard);
   el.run.addEventListener('click', play);
   el.step.addEventListener('click', stepOnce);
   el.stop.addEventListener('click', stopRun);
@@ -339,6 +361,11 @@
   });
 
   window.addEventListener('resize', function () { if (board) board.fit(); });
+  // The board's box also changes without the window changing: the level bar wraps,
+  // a web font arrives, a phone's layout settles. Refit whenever the box itself moves.
+  if (window.ResizeObserver) {
+    new ResizeObserver(function () { if (board) board.fit(); }).observe(el.board);
+  }
 
   /* Start on the first level the child has not finished yet. */
   var start = 0;

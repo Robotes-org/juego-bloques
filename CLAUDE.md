@@ -354,6 +354,29 @@ Things that are easy to get wrong:
   burst plays behind the scrim and the child reads about winning instead of seeing it.
 
 
+## Screen sizes
+
+Three layouts, all in the «narrow screens» block at the end of `styles.css`. Above 60rem
+nothing changed: three columns, as it was built for a notebook.
+
+- **60rem and below** (tablets, phones sideways): two columns, the blocks and the program
+  on the left and the board on the right, so the robot is never below the fold while the
+  child builds. The level bar is one row that scrolls sideways, and `renderNav()` scrolls
+  it to the current level. The secondary controls show only their icon; the word stays in
+  a visually hidden `.btn-label`, so screen readers still announce it.
+- **Short screens** (≤ 60rem wide and ≤ 30rem tall, a phone sideways): the board panel is
+  sticky and its height is `100dvh` minus the chrome, so it stays in view while the left
+  column scrolls.
+- **40rem and below** (a phone upright): one column, board first, then blocks, then
+  program. On both phone layouts the controls are a bar fixed to the bottom of the screen,
+  and pressing Ejecutar or Paso scrolls the board back into view (`showBoard()` in
+  `game.js`).
+
+On a small board (`fit()` sees a box under 420 wide or 300 tall) the island just fits
+its box. The 34 px minimum cell is kept everywhere else; on a phone it clipped a 7 by 7
+level. The board also refits on a `ResizeObserver`, since its box changes when the page
+settles without the window resizing.
+
 ## Design decisions worth keeping
 
 - **Blocks are cut to a puzzle-piece silhouette with `clip-path`** — a notch on top, a
@@ -402,9 +425,10 @@ Things that are easy to get wrong:
   every laptop in the room playing it at once needs a mute button first.
 - A level editor for the teacher. Today a new level means editing `src/levels.js`, which
   is fine for whoever reads this file and not for anyone else.
-- Touch support. The drag code uses pointer events and already has `touch-action: none`,
-  so tablets are close, but nothing has been tested on one and the layout is built for a
-  notebook screen.
+- Touch on real devices. The layout now works on phones and tablets (see «Screen sizes»)
+  and tapping a block, Ejecutar and the level bar were tested with emulated touch, but
+  not on a physical phone. One known rough edge: blocks carry `touch-action: none` for
+  the drag, so a swipe that starts on a block does not scroll the page or a long program.
 - Watching a class use the turned board. A 45° world means "north" is now up and to the
   left, and nobody has yet seen an eight year old predict *avanzar* on it. The hints and
   the block names are all relative to the robot rather than to the screen, which should

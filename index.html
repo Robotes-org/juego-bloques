@@ -2,7 +2,7 @@
 <html lang="es-CL">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ruta Robot — robotes.org</title>
 <meta name="description" content="Juego de programación por bloques para 3º y 4º básico: guía al robot hasta la bandera.">
 <link rel="icon" href="assets/logo/favicon.svg" type="image/svg+xml">
@@ -56,19 +56,19 @@
     <div class="controls">
       <button class="btn btn-run" id="run-btn" type="button">
         <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5 L19 12 L7 19.5 Z"/></svg>
-        Ejecutar
+        <span class="btn-label">Ejecutar</span>
       </button>
       <button class="btn" id="step-btn" type="button" title="Ejecuta un bloque y espera">
         <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5 L15 12 L5 19.5 Z"/><rect x="17" y="4.5" width="3" height="15" rx="1.5"/></svg>
-        Paso
+        <span class="btn-label">Paso</span>
       </button>
       <button class="btn" id="stop-btn" type="button" title="Detiene el robot donde va">
         <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="3"/></svg>
-        Detener
+        <span class="btn-label">Detener</span>
       </button>
       <button class="btn" id="reset-btn" type="button" title="Devuelve el robot al inicio">
         <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11 A7 7 0 1 1 7 16.5 M4 6 L5 11 L10 10"/></svg>
-        Reiniciar
+        <span class="btn-label">Reiniciar</span>
       </button>
       <button class="btn btn-speed" id="speed-btn" type="button" aria-pressed="false">Rápido</button>
     </div>
